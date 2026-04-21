@@ -11,6 +11,7 @@ interface Profile {
   referral_code: string
   total_referrals: number
   total_credits: number
+  role?: "admin" | "manager" | "user"
 }
 
 export function DashboardNav({ user, profile }: { user: User; profile: Profile | null }) {
@@ -24,10 +25,14 @@ export function DashboardNav({ user, profile }: { user: User; profile: Profile |
     router.refresh()
   }
 
+  const isAdmin = profile?.role === "admin"
+
   const navItems = [
     { href: "/dashboard", label: "Overview" },
+    { href: "/dashboard/campaigns", label: "Campaigns" },
     { href: "/dashboard/events", label: "Events" },
     { href: "/dashboard/referrals", label: "Referrals" },
+    ...(isAdmin ? [{ href: "/dashboard/admin", label: "Admin" }] : []),
   ]
 
   return (

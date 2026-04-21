@@ -1,0 +1,463 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { nanoid } from "nanoid"
+
+interface Campaign {
+  id: string
+  name: string
+  description: string
+  event_url: string
+  event_date: string | null
+  event_location: string | null
+  email_subject: string
+  email_body: string
+  cta_text: string
+  status: string
+  created_at: string
+}
+
+interface Contact {
+  id: string
+  name: string
+  email: string
+  relay_depth: number
+  referred_by_name: string | null
+  created_at: string
+  status: string
+}
+
+export default function CampaignDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [loading, setLoading] = useState(true)
+  const [sending, setSending] = useState<string | null>(null)
+
+  // Add contact form
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [newName, setNewName] = useState("")
+  const [newEmail, setNewEmail] = useState("")
+  const [addingContact, setAddingContact] = useState(false)
+
+  // Bulk add
+  const [showBulkAdd, setShowBulkAdd] = useState(false)
+  const [bulkContacts, setBulkContacts] = useState("")
+  const [bulkAdding, setBulkAdding] = useState(false)
+
+  const supabase = createClient()
+
+  useEffect(() => {
+    fetchCampaign()
+    fetchContacts()
+  }, [params.id])
+
+  async function fetchCampaign() {
+    const { data } = await supabase
+      .from("campaigns")
+      .select("*")
+      .eq("id", params.id)
+      .single()
+
+    setCampaign(data)
+    setLoading(false)
+  }
+
+  async function fetchContacts() {
+    const { data } = await supabase
+      .from("contacts")
+      .select("*")
+      .eq("campaign_id", params.id)
+      .order("created_at", { ascending: false })
+
+    setContacts(data || [])
+  }
+
+  async function handleAddContact(e: React.FormEvent) {
+    e.preventDefault()
+    setAddingContact(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single()
+
+    // Create relay token
+    const relayToken = nanoid(21)
+
+    const { data: contact, error } = await supabase
+      .from("contacts")
+      .insert({
+        campaign_id: params.id,
+        name: newName,
+        email: newEmail,
+        relay_depth: 0,
+        referred_by_name: profile?.full_name || user.email,
+        referred_by_email: user.email,
+        status: "pending",
+      })
+      .select()
+      .single()
+
+    if (!error && contact) {
+      // Create relay token
+      await supabase.from("relay_tokens").insert({
+        token: relayToken,
+        campaign_id: params.id,
+        contact_id: contact.id,
+        sender_name: newName,
+        sender_email: newEmail,
+      })
+
+      setContacts([contact, ...contacts])
+      setNewName("")
+      setNewEmail("")
+      setShowAddContact(false)
+
+      // Auto-send email
+      await sendEmailToContact(contact, relayToken, profile?.full_name || user.email || "Team")
+    }
+
+    setAddingContact(false)
+  }
+
+  async function handleBulkAdd() {
+    setBulkAdding(true)
+    const lines = bulkContacts.split("\n").filter(line => line.trim())
+    
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single()
+
+    for (const line of lines) {
+      const parts = line.split(",").map(p => p.trim())
+      if (parts.length >= 2) {
+        const name = parts[0]
+        const email = parts[1]
+        
+        const relayToken = nanoid(21)
+
+        const { data: contact } = await supabase
+          .from("contacts")
+          .insert({
+            campaign_id: params.id,
+            name,
+            email,
+            relay_depth: 0,
+            referred_by_name: profile?.full_name || user.email,
+            referred_by_email: user.email,
+            status: "pending",
+          })
+          .select()
+          .single()
+
+        if (contact) {
+          await supabase.from("relay_tokens").insert({
+            token: relayToken,
+            campaign_id: params.id,
+            contact_id: contact.id,
+            sender_name: name,
+            sender_email: email,
+          })
+
+          await sendEmailToContact(contact, relayToken, profile?.full_name || user.email || "Team")
+        }
+      }
+    }
+
+    await fetchContacts()
+    setBulkContacts("")
+    setShowBulkAdd(false)
+    setBulkAdding(false)
+  }
+
+  async function sendEmailToContact(contact: Contact, relayToken: string, senderName: string) {
+    if (!campaign) return
+
+    setSending(contact.id)
+
+    try {
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId: campaign.id,
+          contactId: contact.id,
+          recipientEmail: contact.email,
+          recipientName: contact.name,
+          senderName: senderName,
+          senderEmail: contact.referred_by_email || "noreply@relay-it.app",
+          subject: campaign.email_subject,
+          htmlContent: campaign.email_body,
+          eventUrl: campaign.event_url,
+          relayToken,
+          isRelay: contact.relay_depth > 0,
+        }),
+      })
+
+      if (response.ok) {
+        await supabase
+          .from("contacts")
+          .update({ status: "sent" })
+          .eq("id", contact.id)
+
+        setContacts(prev => 
+          prev.map(c => c.id === contact.id ? { ...c, status: "sent" } : c)
+        )
+      }
+    } catch (err) {
+      console.error("Failed to send email:", err)
+    }
+
+    setSending(null)
+  }
+
+  async function activateCampaign() {
+    await supabase
+      .from("campaigns")
+      .update({ status: "active" })
+      .eq("id", params.id)
+
+    setCampaign(prev => prev ? { ...prev, status: "active" } : null)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
+
+  if (!campaign) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Campaign not found</p>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="mb-8">
+        <Link href="/dashboard/campaigns" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+          &larr; Back to Campaigns
+        </Link>
+        <div className="flex items-center justify-between mt-4">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
+              <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                campaign.status === "active" 
+                  ? "bg-green-100 text-green-700" 
+                  : "bg-yellow-100 text-yellow-700"
+              }`}>
+                {campaign.status}
+              </span>
+            </div>
+            <p className="text-muted-foreground mt-1">{campaign.description}</p>
+          </div>
+          {campaign.status === "draft" && (
+            <button
+              onClick={activateCampaign}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+            >
+              Activate Campaign
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Campaign Info */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-sm text-muted-foreground">Event URL</p>
+          <a href={campaign.event_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm truncate block">
+            {campaign.event_url}
+          </a>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-sm text-muted-foreground">Total Contacts</p>
+          <p className="text-2xl font-bold text-foreground">{contacts.length}</p>
+        </div>
+        <div className="bg-card border border-border rounded-xl p-4">
+          <p className="text-sm text-muted-foreground">Emails Sent</p>
+          <p className="text-2xl font-bold text-foreground">
+            {contacts.filter(c => c.status === "sent").length}
+          </p>
+        </div>
+      </div>
+
+      {/* Contacts Section */}
+      <div className="bg-card border border-border rounded-xl">
+        <div className="p-6 border-b border-border">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Contacts</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowBulkAdd(true)}
+                className="px-4 py-2 border border-border rounded-lg font-medium hover:bg-accent transition-colors text-sm"
+              >
+                Bulk Import
+              </button>
+              <button
+                onClick={() => setShowAddContact(true)}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm"
+              >
+                Add Contact
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Add Single Contact Form */}
+        {showAddContact && (
+          <div className="p-6 border-b border-border bg-accent/30">
+            <form onSubmit={handleAddContact} className="flex items-end gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-foreground mb-1">Name</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-foreground mb-1">Email</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={addingContact}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {addingContact ? "Adding..." : "Add & Send Email"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddContact(false)}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* Bulk Add Form */}
+        {showBulkAdd && (
+          <div className="p-6 border-b border-border bg-accent/30">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Paste contacts (Name, Email per line)
+            </label>
+            <textarea
+              value={bulkContacts}
+              onChange={(e) => setBulkContacts(e.target.value)}
+              rows={5}
+              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none font-mono text-sm"
+              placeholder="John Doe, john@example.com&#10;Jane Smith, jane@example.com"
+            />
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleBulkAdd}
+                disabled={bulkAdding || !bulkContacts.trim()}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {bulkAdding ? "Importing..." : "Import & Send Emails"}
+              </button>
+              <button
+                onClick={() => setShowBulkAdd(false)}
+                className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Contacts Table */}
+        <div className="overflow-x-auto">
+          {contacts.length === 0 ? (
+            <div className="p-12 text-center">
+              <p className="text-muted-foreground">No contacts yet. Add your first contact to start the relay chain.</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Referred By</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Depth</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Added</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {contacts.map((contact) => (
+                  <tr key={contact.id} className="hover:bg-muted/30">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                      {contact.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {contact.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {contact.referred_by_name || "Direct"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        contact.relay_depth === 0 
+                          ? "bg-blue-100 text-blue-700" 
+                          : "bg-purple-100 text-purple-700"
+                      }`}>
+                        {contact.relay_depth === 0 ? "Initial" : `Level ${contact.relay_depth}`}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        contact.status === "sent" 
+                          ? "bg-green-100 text-green-700" 
+                          : contact.status === "pending"
+                          ? "bg-yellow-100 text-yellow-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}>
+                        {sending === contact.id ? "Sending..." : contact.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                      {new Date(contact.created_at).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
