@@ -28,6 +28,13 @@ export default function NewCampaignPage() {
   const [eventDate, setEventDate] = useState("")
   const [eventLocation, setEventLocation] = useState("")
 
+  // Email Mode: AI-generated or pre-written
+  const [emailMode, setEmailMode] = useState<"ai" | "manual">("ai")
+  
+  // Manual email fields
+  const [manualSubject, setManualSubject] = useState("")
+  const [manualBody, setManualBody] = useState("")
+
   // Step 2: AI Generation Questions
   const [targetAudience, setTargetAudience] = useState("")
   const [tone, setTone] = useState("professional")
@@ -38,6 +45,20 @@ export default function NewCampaignPage() {
   const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(null)
   const [editedSubject, setEditedSubject] = useState("")
   const [editedBody, setEditedBody] = useState("")
+
+  function handleUseManualEmail() {
+    setGeneratedEmail({
+      subject: manualSubject,
+      greeting: "",
+      body: manualBody,
+      callToActionText: callToAction,
+      relaySection: "",
+      closing: "",
+    })
+    setEditedSubject(manualSubject)
+    setEditedBody(manualBody)
+    setStep(3)
+  }
 
   async function handleGenerateEmail() {
     setGenerating(true)
@@ -229,14 +250,115 @@ export default function NewCampaignPage() {
               </div>
             </div>
 
+            {/* Email Mode Selection */}
+            <div className="border-t border-border pt-6">
+              <label className="block text-sm font-medium text-foreground mb-3">
+                Email Content
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEmailMode("ai")}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    emailMode === "ai"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span className="font-medium">AI Generated</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Let AI create personalized emails based on your campaign
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEmailMode("manual")}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    emailMode === "manual"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span className="font-medium">Paste Pre-Written</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Use your own pre-written email content
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Manual Email Input (shown when manual mode selected) */}
+            {emailMode === "manual" && (
+              <div className="space-y-4 bg-accent/30 rounded-lg p-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Email Subject *
+                  </label>
+                  <input
+                    type="text"
+                    value={manualSubject}
+                    onChange={(e) => setManualSubject(e.target.value)}
+                    className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    placeholder="Enter your email subject line"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Email Body *
+                  </label>
+                  <textarea
+                    value={manualBody}
+                    onChange={(e) => setManualBody(e.target.value)}
+                    rows={10}
+                    className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
+                    placeholder="Paste your pre-written email here...
+
+Use {{recipient_name}} for the recipient's name
+Use {{sender_name}} for the sender's name
+
+Example:
+Hi {{recipient_name}},
+
+I wanted to share this exciting event with you...
+
+Best regards,
+{{sender_name}}"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Use {"{{recipient_name}}"} and {"{{sender_name}}"} as placeholders for personalization
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-end">
-              <button
-                onClick={() => setStep(2)}
-                disabled={!name || !description || !eventUrl}
-                className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Next: AI Settings
-              </button>
+              {emailMode === "ai" ? (
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={!name || !description || !eventUrl}
+                  className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next: AI Settings
+                </button>
+              ) : (
+                <button
+                  onClick={handleUseManualEmail}
+                  disabled={!name || !description || !eventUrl || !manualSubject || !manualBody}
+                  className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next: Review Email
+                </button>
+              )}
             </div>
           </div>
         )}
