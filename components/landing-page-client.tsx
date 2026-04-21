@@ -4,17 +4,31 @@ import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 
 // Animated floating logo component
-function FloatingLogo({ delay = 0, duration = 20, top = "20%", size = 60 }: { delay?: number; duration?: number; top?: string; size?: number }) {
+function FloatingLogo({ 
+  delay = 0, 
+  duration = 20, 
+  top = "20%", 
+  size = 60,
+  colorFrom = "from-primary",
+  colorTo = "to-info"
+}: { 
+  delay?: number
+  duration?: number
+  top?: string
+  size?: number
+  colorFrom?: string
+  colorTo?: string
+}) {
   return (
     <div
-      className="absolute pointer-events-none z-0 opacity-20"
+      className="absolute pointer-events-none z-0 opacity-30"
       style={{
         top,
         animation: `floatAcross ${duration}s linear ${delay}s infinite, rotate ${duration / 2}s linear infinite`,
       }}
     >
       <div
-        className="bg-gradient-to-br from-primary to-info rounded-xl flex items-center justify-center shadow-lg"
+        className={`bg-gradient-to-br ${colorFrom} ${colorTo} rounded-xl flex items-center justify-center shadow-lg`}
         style={{ width: size, height: size }}
       >
         <svg className="text-white" style={{ width: size * 0.6, height: size * 0.6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,12 +73,12 @@ export function LandingPageClient() {
         }
       `}</style>
 
-      {/* Floating Logos */}
-      <FloatingLogo delay={0} duration={25} top="15%" size={50} />
-      <FloatingLogo delay={5} duration={30} top="35%" size={40} />
-      <FloatingLogo delay={10} duration={22} top="55%" size={60} />
-      <FloatingLogo delay={15} duration={28} top="75%" size={45} />
-      <FloatingLogo delay={8} duration={35} top="85%" size={35} />
+      {/* Floating Logos - Using page colors */}
+      <FloatingLogo delay={0} duration={25} top="15%" size={50} colorFrom="from-primary" colorTo="to-info" />
+      <FloatingLogo delay={5} duration={30} top="35%" size={40} colorFrom="from-warning" colorTo="to-destructive" />
+      <FloatingLogo delay={10} duration={22} top="55%" size={60} colorFrom="from-success" colorTo="to-info" />
+      <FloatingLogo delay={15} duration={28} top="75%" size={45} colorFrom="from-info" colorTo="to-primary" />
+      <FloatingLogo delay={8} duration={35} top="85%" size={35} colorFrom="from-destructive" colorTo="to-warning" />
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
