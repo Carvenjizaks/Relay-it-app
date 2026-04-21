@@ -145,7 +145,7 @@ export default async function CampaignsPage() {
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                      {campaign.name}
+                      {campaign.title}
                     </h3>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <span>{campaign.contacts?.[0]?.count || 0} contacts</span>

@@ -150,7 +150,7 @@ export default function AdminContactsPage() {
           <option value="all">All Campaigns</option>
           {campaigns.map((campaign) => (
             <option key={campaign.id} value={campaign.id}>
-              {campaign.name}
+              {campaign.title}
             </option>
           ))}
         </select>
