@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { EmailEditor } from "@/components/email-editor"
 
 interface GeneratedEmail {
   subject: string
@@ -345,26 +346,16 @@ export default function NewCampaignPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Email Body *
                   </label>
-                  <textarea
+                  <EmailEditor
                     value={manualBody}
-                    onChange={(e) => setManualBody(e.target.value)}
-                    rows={10}
-                    className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm placeholder:text-muted-foreground"
-                    placeholder="Paste your pre-written email here...
+                    onChange={setManualBody}
+                    placeholder="Start writing your email...
 
 Use {{recipient_name}} for the recipient's name
-Use {{sender_name}} for the sender's name
-
-Example:
-Hi {{recipient_name}},
-
-I wanted to share this exciting event with you...
-
-Best regards,
-{{sender_name}}"
+Use {{sender_name}} for the sender's name"
                   />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Use {"{{recipient_name}}"} and {"{{sender_name}}"} as placeholders for personalization
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Use {"{{recipient_name}}"} and {"{{sender_name}}"} as placeholders for personalization. The editor supports Substack-style formatting with bold, italic, headings, links, and more.
                   </p>
                 </div>
               </div>
@@ -515,14 +506,13 @@ Best regards,
               <label className="block text-sm font-medium text-foreground mb-2">
                 Email Body
               </label>
-              <textarea
+              <EmailEditor
                 value={editedBody}
-                onChange={(e) => setEditedBody(e.target.value)}
-                rows={12}
-                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
+                onChange={setEditedBody}
+                placeholder="Edit your email content..."
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Use {"{{recipient_name}}"} and {"{{sender_name}}"} as placeholders
+              <p className="mt-2 text-xs text-muted-foreground">
+                Use {"{{recipient_name}}"} and {"{{sender_name}}"} as placeholders. Format your email with the toolbar above.
               </p>
             </div>
 
@@ -541,9 +531,20 @@ Best regards,
                 <p className="font-semibold text-foreground mb-4 pb-4 border-b border-border">
                   {editedSubject.replace("{{recipient_name}}", "John")}
                 </p>
-                <div className="text-sm whitespace-pre-wrap text-foreground leading-relaxed">
-                  {editedBody.replace(/\{\{recipient_name\}\}/g, "John").replace(/\{\{sender_name\}\}/g, "Sarah")}
-                </div>
+                <div 
+                  className="text-sm text-foreground leading-relaxed prose prose-sm max-w-none
+                    [&_h1]:text-xl [&_h1]:font-bold [&_h1]:mb-2
+                    [&_h2]:text-lg [&_h2]:font-bold [&_h2]:mb-2
+                    [&_h3]:text-base [&_h3]:font-semibold [&_h3]:mb-2
+                    [&_p]:mb-3 [&_a]:text-primary [&_a]:underline
+                    [&_blockquote]:border-l-4 [&_blockquote]:border-primary [&_blockquote]:pl-3 [&_blockquote]:italic"
+                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: editedBody
+                      .replace(/\{\{recipient_name\}\}/g, "John")
+                      .replace(/\{\{sender_name\}\}/g, "Sarah") 
+                  }}
+                />
               </div>
             </div>
 

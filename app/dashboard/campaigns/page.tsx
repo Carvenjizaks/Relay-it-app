@@ -10,6 +10,7 @@ export default async function CampaignsPage() {
     redirect("/auth/login")
   }
 
+  // Get profile first to determine query filter
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
@@ -20,19 +21,17 @@ export default async function CampaignsPage() {
   const isManager = profile?.role === "manager"
   const canCreate = isAdmin || isManager
 
+  // Build optimized campaign query
   let query = supabase
     .from("campaigns")
-    .select(`
-      *,
-      contacts:contacts(count),
-      created_by_profile:profiles!campaigns_created_by_fkey(full_name)
-    `)
+    .select(`id, title, status, created_at, contacts:contacts(count)`)
     .order("created_at", { ascending: false })
-
+    .limit(50)
+  
   if (!isAdmin) {
     query = query.eq("created_by", user.id)
   }
-
+  
   const { data: campaigns } = await query
 
   const tabs = [
