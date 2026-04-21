@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { Logo } from "@/components/logo"
 
 interface Contact {
   id: string
@@ -133,9 +134,12 @@ export function UnsubscribeClient({ contact, token }: { contact: Contact; token:
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Powered by <span className="font-semibold">Relay-it</span>
-        </p>
+        <div className="flex justify-center mt-6">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Powered by</span>
+            <Logo size="sm" linkTo={null} showIcon={false} />
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import { Logo } from "./logo"
 
 interface Profile {
   id: string
@@ -93,14 +94,7 @@ export function DashboardSidebar({
     <aside className="fixed left-0 top-0 bottom-0 w-60 bg-sidebar text-sidebar-foreground flex flex-col z-50">
       {/* Logo */}
       <div className="p-4 border-b border-sidebar-border">
-        <Link href="/dashboard" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <span className="font-bold text-lg text-white">relay-it</span>
-        </Link>
+        <Logo size="md" linkTo="/dashboard" />
       </div>
 
       {/* Create New Button */}

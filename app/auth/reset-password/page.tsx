@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+import { Logo } from "@/components/logo"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -81,9 +82,9 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
-            <Link href="/" className="inline-block">
-              <h1 className="text-3xl font-bold text-primary">Relay-it</h1>
-            </Link>
+            <div className="flex justify-center">
+              <Logo size="xl" linkTo="/" />
+            </div>
           </div>
 
           <div className="bg-card border border-border rounded-xl p-8 shadow-sm text-center">
@@ -113,9 +114,9 @@ export default function ResetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
-            <Link href="/" className="inline-block">
-              <h1 className="text-3xl font-bold text-primary">Relay-it</h1>
-            </Link>
+            <div className="flex justify-center">
+              <Logo size="xl" linkTo="/" />
+            </div>
           </div>
 
           <div className="bg-card border border-border rounded-xl p-8 shadow-sm text-center">
@@ -139,9 +140,9 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold text-primary">Relay-it</h1>
-          </Link>
+          <div className="flex justify-center">
+            <Logo size="xl" linkTo="/" />
+          </div>
           <p className="text-muted-foreground mt-2">Create a new password</p>
         </div>
 
