@@ -3,8 +3,8 @@
 @theme inline {
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   
-  /* Clean Light Color Palette */
-  --color-background: #F8F9FA;
+  /* Clean Light Color Palette - Pearl/Dove White */
+  --color-background: #FAF9F6;
   --color-foreground: #1A1A2E;
   --color-card: #FFFFFF;
   --color-card-foreground: #1A1A2E;
