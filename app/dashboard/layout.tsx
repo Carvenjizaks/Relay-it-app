@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import { DashboardNav } from "@/components/dashboard-nav"
+import { DashboardSidebar } from "@/components/dashboard-sidebar"
 
 export default async function DashboardLayout({
   children,
@@ -20,11 +20,25 @@ export default async function DashboardLayout({
     .eq("id", user.id)
     .single()
 
+  // Fetch workspace stats
+  const [campaignsResult, contactsResult] = await Promise.all([
+    supabase.from("campaigns").select("id", { count: "exact", head: true }),
+    supabase.from("contacts").select("id", { count: "exact", head: true }),
+  ])
+
+  const stats = {
+    campaigns: campaignsResult.count || 0,
+    contacts: contactsResult.count || 0,
+    emailsSent: 0,
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <DashboardNav user={user} profile={profile} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
+      <DashboardSidebar user={user} profile={profile} stats={stats} />
+      <main className="pl-60">
+        <div className="min-h-screen">
+          {children}
+        </div>
       </main>
     </div>
   )
