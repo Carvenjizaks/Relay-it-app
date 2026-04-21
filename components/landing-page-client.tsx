@@ -3,82 +3,12 @@
 import Link from "next/link"
 import { ThemeToggle } from "./theme-toggle"
 
-// Animated floating logo component
-function FloatingLogo({ 
-  delay = 0, 
-  duration = 20, 
-  top = "20%", 
-  size = 60,
-  colorFrom = "from-primary",
-  colorTo = "to-info"
-}: { 
-  delay?: number
-  duration?: number
-  top?: string
-  size?: number
-  colorFrom?: string
-  colorTo?: string
-}) {
-  return (
-    <div
-      className="absolute pointer-events-none z-0 opacity-30"
-      style={{
-        top,
-        animation: `floatAcross ${duration}s linear ${delay}s infinite, rotate ${duration / 2}s linear infinite`,
-      }}
-    >
-      <div
-        className={`bg-gradient-to-br ${colorFrom} ${colorTo} rounded-xl flex items-center justify-center shadow-lg`}
-        style={{ width: size, height: size }}
-      >
-        <svg className="text-white" style={{ width: size * 0.6, height: size * 0.6 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-        </svg>
-      </div>
-    </div>
-  )
-}
-
 export function LandingPageClient() {
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300 overflow-x-hidden">
-      {/* CSS Animations */}
-      <style jsx global>{`
-        @keyframes floatAcross {
-          0% {
-            left: -100px;
-            transform: translateY(0px);
-          }
-          25% {
-            transform: translateY(-30px);
-          }
-          50% {
-            transform: translateY(0px);
-          }
-          75% {
-            transform: translateY(30px);
-          }
-          100% {
-            left: calc(100% + 100px);
-            transform: translateY(0px);
-          }
-        }
-        @keyframes rotate {
-          from {
-            rotate: 0deg;
-          }
-          to {
-            rotate: 360deg;
-          }
-        }
-      `}</style>
+    <div className="min-h-screen bg-background">
 
-      {/* Floating Logos - Using page colors */}
-      <FloatingLogo delay={0} duration={25} top="15%" size={50} colorFrom="from-primary" colorTo="to-info" />
-      <FloatingLogo delay={5} duration={30} top="35%" size={40} colorFrom="from-warning" colorTo="to-destructive" />
-      <FloatingLogo delay={10} duration={22} top="55%" size={60} colorFrom="from-success" colorTo="to-info" />
-      <FloatingLogo delay={15} duration={28} top="75%" size={45} colorFrom="from-info" colorTo="to-primary" />
-      <FloatingLogo delay={8} duration={35} top="85%" size={35} colorFrom="from-destructive" colorTo="to-warning" />
+
+
 
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">

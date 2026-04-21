@@ -181,12 +181,29 @@ textarea::placeholder {
   outline-offset: 2px;
 }
 
-/* Smooth animations */
+/* Smooth animations - GPU accelerated */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translate3d(0, 4px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
+  animation: fadeIn 0.15s ease-out;
+  will-change: opacity, transform;
+}
+
+/* Optimize transitions for better performance */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
