@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { nanoid } from "nanoid"
+import { Logo } from "@/components/logo"
 
 interface RelayData {
   token: string
@@ -184,15 +185,8 @@ export default function RelayPage() {
       {/* Gradient Header */}
       <header className="bg-gradient-to-br from-primary/10 via-warning/5 to-background border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-8">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-warning rounded-lg flex items-center justify-center shadow-lg shadow-primary/25">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <span className="text-sm font-semibold bg-gradient-to-r from-primary to-warning bg-clip-text text-transparent">
-              Relay-it
-            </span>
+          <div className="mb-4">
+            <Logo size="sm" linkTo={null} />
           </div>
           <p className="text-sm font-medium text-primary mb-2">
             Shared by {relayData.sender_name}
@@ -359,9 +353,7 @@ export default function RelayPage() {
         <div className="text-center pt-4">
           <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <span>Powered by</span>
-            <span className="font-semibold bg-gradient-to-r from-primary to-warning bg-clip-text text-transparent">
-              Relay-it
-            </span>
+            <Logo size="sm" linkTo={null} showIcon={false} />
           </div>
         </div>
       </main>
