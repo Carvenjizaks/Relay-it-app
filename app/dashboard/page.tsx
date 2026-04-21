@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
+import { CopyButton } from "@/components/copy-button"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -51,12 +52,7 @@ export default async function DashboardPage() {
           <code className="px-4 py-3 bg-accent rounded-lg font-mono text-lg text-foreground">
             {profile?.referral_code}
           </code>
-          <button
-            onClick={() => navigator.clipboard.writeText(profile?.referral_code || "")}
-            className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-accent transition-colors"
-          >
-            Copy
-          </button>
+          <CopyButton text={profile?.referral_code || ""} />
         </div>
       </div>
 
