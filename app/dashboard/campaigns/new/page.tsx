@@ -113,7 +113,7 @@ export default function NewCampaignPage() {
     const { data, error } = await supabase
       .from("campaigns")
       .insert({
-        name,
+        title: name,
         description,
         event_url: eventUrl,
         event_date: eventDate ? new Date(eventDate).toISOString() : null,
@@ -123,7 +123,7 @@ export default function NewCampaignPage() {
         key_benefits: keyBenefits || null,
         email_subject: editedSubject,
         email_body: editedBody,
-        cta_text: generatedEmail?.callToActionText || callToAction,
+        call_to_action: generatedEmail?.callToActionText || callToAction,
         created_by: user.id,
         status: "draft",
       })
