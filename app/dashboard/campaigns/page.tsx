@@ -24,7 +24,7 @@ export default async function CampaignsPage() {
   // Build optimized campaign query
   let query = supabase
     .from("campaigns")
-    .select(`id, title, status, created_at, contacts:contacts(count)`)
+    .select(`id, title, status, created_at, contacts:contacts!contacts_campaign_id_fkey(count)`)
     .order("created_at", { ascending: false })
     .limit(50)
   
