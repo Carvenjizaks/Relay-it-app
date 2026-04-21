@@ -7,6 +7,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Relay-it - Event Lead Generation Through Referrals",
   description: "Turn attendees into your best marketers. Create events, track referrals, and reward your community with Relay-it.",
+  keywords: ["event marketing", "referral tracking", "lead generation", "event management"],
 }
 
 export const viewport: Viewport = {
