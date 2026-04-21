@@ -290,6 +290,7 @@ export default function SettingsPage() {
         {/* Save Button */}
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
