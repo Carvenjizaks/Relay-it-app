@@ -50,15 +50,54 @@
   --radius: 0.5rem;
 }
 
+/* Dark mode - via class toggle */
+:root.dark {
+  --color-background: #0F0F15;
+  --color-foreground: #F9FAFB;
+  --color-card: #1A1A2E;
+  --color-card-foreground: #F9FAFB;
+  
+  --color-primary: #818CF8;
+  --color-primary-foreground: #FFFFFF;
+  
+  --color-secondary: #1F2937;
+  --color-secondary-foreground: #D1D5DB;
+  
+  --color-muted: #1F2937;
+  --color-muted-foreground: #9CA3AF;
+  
+  --color-accent: #1E1B4B;
+  --color-accent-foreground: #A5B4FC;
+  
+  --color-destructive: #F87171;
+  --color-destructive-foreground: #0F0F15;
+  --color-success: #34D399;
+  --color-success-foreground: #0F0F15;
+  --color-warning: #FBBF24;
+  --color-warning-foreground: #0F0F15;
+  --color-info: #60A5FA;
+  --color-info-foreground: #0F0F15;
+  
+  --color-border: #374151;
+  --color-input: #374151;
+  --color-ring: #818CF8;
+  
+  --color-sidebar: #0D0D12;
+  --color-sidebar-foreground: #E5E7EB;
+  --color-sidebar-primary: #818CF8;
+  --color-sidebar-accent: #1A1A2E;
+  --color-sidebar-border: #1F2937;
+}
+
 @media (prefers-color-scheme: dark) {
-  @theme inline {
+  :root:not(.light) {
     --color-background: #0F0F15;
     --color-foreground: #F9FAFB;
     --color-card: #1A1A2E;
     --color-card-foreground: #F9FAFB;
     
     --color-primary: #818CF8;
-    --color-primary-foreground: #1A1A2E;
+    --color-primary-foreground: #FFFFFF;
     
     --color-secondary: #1F2937;
     --color-secondary-foreground: #D1D5DB;
@@ -70,13 +109,13 @@
     --color-accent-foreground: #A5B4FC;
     
     --color-destructive: #F87171;
-    --color-destructive-foreground: #1A1A2E;
+    --color-destructive-foreground: #0F0F15;
     --color-success: #34D399;
-    --color-success-foreground: #1A1A2E;
+    --color-success-foreground: #0F0F15;
     --color-warning: #FBBF24;
-    --color-warning-foreground: #1A1A2E;
+    --color-warning-foreground: #0F0F15;
     --color-info: #60A5FA;
-    --color-info-foreground: #1A1A2E;
+    --color-info-foreground: #0F0F15;
     
     --color-border: #374151;
     --color-input: #374151;
