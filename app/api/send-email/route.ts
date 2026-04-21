@@ -61,14 +61,14 @@ export async function POST(req: Request) {
 </head>
 <body>
   <div class="header">
-    <h1 style="margin: 0; color: #333;">${campaign.name}</h1>
+    <h1 style="margin: 0; color: #333;">${campaign.title}</h1>
   </div>
   
   <div class="content">
     ${personalizedContent}
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="${eventUrl}" class="cta-button">${campaign.cta_text || "Learn More"}</a>
+      <a href="${eventUrl}" class="cta-button">${campaign.call_to_action || "Learn More"}</a>
     </div>
   </div>
   

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 
 interface Campaign {
   id: string
-  name: string
+  title: string
 }
 
 interface Contact {
@@ -18,7 +18,7 @@ interface Contact {
   created_at: string
   campaign: {
     id: string
-    name: string
+    title: string
   }
 }
 
@@ -73,7 +73,7 @@ export default function AdminContactsPage() {
     const rows = contacts.map(c => [
       c.name,
       c.email,
-      c.campaign?.name || "",
+      c.campaign?.title || "",
       c.relay_depth === 0 ? "Initial" : `Level ${c.relay_depth}`,
       c.referred_by_name || "Direct",
       c.status,
@@ -150,7 +150,7 @@ export default function AdminContactsPage() {
           <option value="all">All Campaigns</option>
           {campaigns.map((campaign) => (
             <option key={campaign.id} value={campaign.id}>
-              {campaign.name}
+              {campaign.title}
             </option>
           ))}
         </select>
@@ -204,7 +204,7 @@ export default function AdminContactsPage() {
                       {contact.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {contact.campaign?.name || "Unknown"}
+                      {contact.campaign?.title || "Unknown"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
