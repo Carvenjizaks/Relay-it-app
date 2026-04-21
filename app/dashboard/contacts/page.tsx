@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import * as XLSX from "xlsx"
 
@@ -36,32 +36,35 @@ export default function ContactsPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [previewData, setPreviewData] = useState<Array<{ name: string; email: string; cellphone: string }>>([])
   const [dragActive, setDragActive] = useState(false)
+  const [refetchTrigger, setRefetchTrigger] = useState(0)
 
-  const supabase = createClient()
-
-  const fetchData = useCallback(async () => {
-    setLoading(true)
-    
-    const [contactsRes, campaignsRes] = await Promise.all([
-      supabase
-        .from("contacts")
-        .select("*, campaign:campaigns(id, title)")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("campaigns")
-        .select("id, title")
-        .order("title", { ascending: true })
-    ])
-
-    if (contactsRes.data) setContacts(contactsRes.data)
-    if (campaignsRes.data) setCampaigns(campaignsRes.data)
-    
-    setLoading(false)
-  }, [supabase])
+  // Memoize supabase client to prevent recreation
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
+    async function fetchData() {
+      setLoading(true)
+      
+      const [contactsRes, campaignsRes] = await Promise.all([
+        supabase
+          .from("contacts")
+          .select("*, campaign:campaigns(id, title)")
+          .order("created_at", { ascending: false })
+          .limit(100),
+        supabase
+          .from("campaigns")
+          .select("id, title")
+          .order("title", { ascending: true })
+      ])
+
+      if (contactsRes.data) setContacts(contactsRes.data)
+      if (campaignsRes.data) setCampaigns(campaignsRes.data)
+      
+      setLoading(false)
+    }
+    
     fetchData()
-  }, [fetchData])
+  }, [supabase, refetchTrigger])
 
   const handleFileUpload = async (file: File) => {
     if (!file) return
@@ -156,7 +159,7 @@ export default function ContactsPage() {
     setPreviewData([])
     
     if (success > 0) {
-      fetchData()
+      setRefetchTrigger(prev => prev + 1)
     }
   }
 

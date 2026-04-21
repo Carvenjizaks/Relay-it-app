@@ -6,9 +6,10 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Optimized: fetch profile and campaigns in parallel with minimal fields
   const [{ data: profile }, { data: campaigns }] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user!.id).single(),
-    supabase.from("campaigns").select("*").order("created_at", { ascending: false }).limit(5),
+    supabase.from("profiles").select("full_name, referral_code").eq("id", user!.id).single(),
+    supabase.from("campaigns").select("id, title, status, created_at").order("created_at", { ascending: false }).limit(5),
   ])
 
   return (
