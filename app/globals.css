@@ -94,6 +94,29 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Form Inputs - Ensure visible text */
+input,
+textarea,
+select {
+  color: var(--color-foreground);
+  background-color: var(--color-card);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted-foreground);
+}
+
+/* Dark mode input adjustments */
+@media (prefers-color-scheme: dark) {
+  input,
+  textarea,
+  select {
+    color: var(--color-foreground);
+    background-color: var(--color-card);
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
