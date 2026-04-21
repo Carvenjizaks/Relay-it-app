@@ -310,7 +310,7 @@ export default function RelayPage() {
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-card text-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground"
                     placeholder="John Doe"
                   />
                 </div>
@@ -323,7 +323,7 @@ export default function RelayPage() {
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
                     required
-                    className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
+                    className="w-full px-4 py-3 bg-card text-foreground border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all placeholder:text-muted-foreground"
                     placeholder="john@example.com"
                   />
                 </div>

@@ -215,7 +215,7 @@ export default function NewCampaignPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
                 placeholder="e.g., Tech Summit 2024 Launch"
               />
             </div>
@@ -228,7 +228,7 @@ export default function NewCampaignPage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none placeholder:text-muted-foreground"
                 placeholder="Describe your event, product launch, or campaign in detail. The more context you provide, the better the AI-generated email will be."
               />
             </div>
@@ -241,7 +241,7 @@ export default function NewCampaignPage() {
                 type="url"
                 value={eventUrl}
                 onChange={(e) => setEventUrl(e.target.value)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
                 placeholder="https://example.com/register"
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -258,7 +258,7 @@ export default function NewCampaignPage() {
                   type="datetime-local"
                   value={eventDate}
                   onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
               <div>
@@ -269,7 +269,7 @@ export default function NewCampaignPage() {
                   type="text"
                   value={eventLocation}
                   onChange={(e) => setEventLocation(e.target.value)}
-                  className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
                   placeholder="e.g., San Francisco, CA or Virtual"
                 />
               </div>
@@ -337,7 +337,7 @@ export default function NewCampaignPage() {
                     type="text"
                     value={manualSubject}
                     onChange={(e) => setManualSubject(e.target.value)}
-                    className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
                     placeholder="Enter your email subject line"
                   />
                 </div>
@@ -349,7 +349,7 @@ export default function NewCampaignPage() {
                     value={manualBody}
                     onChange={(e) => setManualBody(e.target.value)}
                     rows={10}
-                    className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
+                    className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm placeholder:text-muted-foreground"
                     placeholder="Paste your pre-written email here...
 
 Use {{recipient_name}} for the recipient's name
@@ -409,7 +409,7 @@ Best regards,
                 type="text"
                 value={targetAudience}
                 onChange={(e) => setTargetAudience(e.target.value)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
                 placeholder="e.g., Software developers, Marketing professionals, Business owners"
               />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -424,7 +424,7 @@ Best regards,
               <select
                 value={tone}
                 onChange={(e) => setTone(e.target.value)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="professional">Professional</option>
                 <option value="friendly">Friendly & Casual</option>
@@ -442,7 +442,7 @@ Best regards,
                 value={keyBenefits}
                 onChange={(e) => setKeyBenefits(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none placeholder:text-muted-foreground"
                 placeholder="List the main benefits or highlights of attending/participating..."
               />
             </div>
@@ -455,7 +455,7 @@ Best regards,
                 type="text"
                 value={callToAction}
                 onChange={(e) => setCallToAction(e.target.value)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
                 placeholder="e.g., Register Now, Get Your Ticket, Join Us"
               />
             </div>
@@ -507,7 +507,7 @@ Best regards,
                 type="text"
                 value={editedSubject}
                 onChange={(e) => setEditedSubject(e.target.value)}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
 
@@ -519,7 +519,7 @@ Best regards,
                 value={editedBody}
                 onChange={(e) => setEditedBody(e.target.value)}
                 rows={12}
-                className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none font-mono text-sm"
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Use {"{{recipient_name}}"} and {"{{sender_name}}"} as placeholders
