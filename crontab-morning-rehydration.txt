@@ -1,0 +1,8 @@
+# ⏰ DAILY MORNING REHYDRATION REMINDER
+# Schedule: Every day at 6:00 AM UTC
+# Action: Read MORNING_REHYDRATION.md and update Carven on project status
+
+0 6 * * * /bin/bash -c 'echo "Morning rehydration time" >> /root/.openclaw/workspace/memory/morning-trigger.log'
+
+# Note: This cron job triggers the morning briefing routine
+# The actual reading of memory files happens when the agent session starts
