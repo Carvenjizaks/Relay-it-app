@@ -363,11 +363,20 @@ Use {{sender_name}} for the sender's name"
               </div>
             )}
 
+            {/* Debug info - remove after testing */}
+            <div className="mb-4 p-3 bg-muted rounded-lg text-xs text-muted-foreground">
+              <p>Debug: name={name ? "filled" : "empty"}, description={description ? "filled" : "empty"}, eventUrl={eventUrl ? "filled" : "empty"}</p>
+              <p>Button disabled: {(!name || !description || !eventUrl) ? "YES" : "NO"}</p>
+            </div>
+
             <div className="flex justify-end pt-4">
               {emailMode === "ai" ? (
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    console.log("[v0] AI Next clicked - name:", name, "description:", description, "eventUrl:", eventUrl)
+                    setStep(2)
+                  }}
                   disabled={!name || !description || !eventUrl}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
                 >
@@ -379,7 +388,10 @@ Use {{sender_name}} for the sender's name"
               ) : (
                 <button
                   type="button"
-                  onClick={handleUseManualEmail}
+                  onClick={() => {
+                    console.log("[v0] Manual Next clicked - name:", name, "description:", description, "eventUrl:", eventUrl, "subject:", manualSubject, "body length:", manualBody.length)
+                    handleUseManualEmail()
+                  }}
                   disabled={!name || !description || !eventUrl || !manualSubject || !manualBody}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
                 >
