@@ -8,14 +8,14 @@ import { nanoid } from "nanoid"
 
 interface Campaign {
   id: string
-  name: string
+  title: string
   description: string
   event_url: string
   event_date: string | null
   event_location: string | null
   email_subject: string
   email_body: string
-  cta_text: string
+  call_to_action: string
   status: string
   created_at: string
 }
@@ -259,7 +259,7 @@ export default function CampaignDetailPage() {
         <div className="flex items-center justify-between mt-4">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground">{campaign.name}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{campaign.title}</h1>
               <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                 campaign.status === "active" 
                   ? "bg-green-100 text-green-700" 

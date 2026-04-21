@@ -13,14 +13,14 @@ interface RelayData {
   sender_email: string
   campaign: {
     id: string
-    name: string
+    title: string
     description: string
     event_url: string
     event_date: string | null
     event_location: string | null
     email_subject: string
     email_body: string
-    cta_text: string
+    call_to_action: string
   }
 }
 
@@ -197,7 +197,7 @@ export default function RelayPage() {
           <p className="text-sm font-medium text-primary mb-2">
             Shared by {relayData.sender_name}
           </p>
-          <h1 className="text-3xl font-bold text-foreground">{relayData.campaign.name}</h1>
+          <h1 className="text-3xl font-bold text-foreground">{relayData.campaign.title}</h1>
         </div>
       </header>
 
@@ -245,7 +245,7 @@ export default function RelayPage() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 transition-all duration-200 hover:-translate-y-0.5"
           >
-            {relayData.campaign.cta_text || "Learn More"}
+            {relayData.campaign.call_to_action || "Learn More"}
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>

@@ -108,7 +108,7 @@ export default async function DashboardPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">{campaign.name}</p>
+                    <p className="font-medium text-foreground">{campaign.title}</p>
                     <p className="text-sm text-muted-foreground">
                       Created {new Date(campaign.created_at).toLocaleDateString()}
                     </p>
