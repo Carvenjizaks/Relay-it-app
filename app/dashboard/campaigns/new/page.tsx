@@ -364,7 +364,11 @@ Use {{sender_name}} for the sender's name"
             <div className="flex justify-end pt-4">
               {emailMode === "ai" ? (
                 <button
-                  onClick={() => setStep(2)}
+                  type="button"
+                  onClick={() => {
+                    console.log("[v0] Next button clicked, going to step 2")
+                    setStep(2)
+                  }}
                   disabled={!name || !description || !eventUrl}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
                 >
@@ -375,7 +379,11 @@ Use {{sender_name}} for the sender's name"
                 </button>
               ) : (
                 <button
-                  onClick={handleUseManualEmail}
+                  type="button"
+                  onClick={() => {
+                    console.log("[v0] Manual email button clicked")
+                    handleUseManualEmail()
+                  }}
                   disabled={!name || !description || !eventUrl || !manualSubject || !manualBody}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
                 >
@@ -453,7 +461,11 @@ Use {{sender_name}} for the sender's name"
 
             <div className="flex justify-between pt-4">
               <button
-                onClick={() => setStep(1)}
+                type="button"
+                onClick={() => {
+                  console.log("[v0] Back button clicked, going to step 1")
+                  setStep(1)
+                }}
                 className="inline-flex items-center gap-2 px-6 py-3 border border-border rounded-xl font-medium hover:bg-accent transition-all"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,7 +474,11 @@ Use {{sender_name}} for the sender's name"
                 Back
               </button>
               <button
-                onClick={handleGenerateEmail}
+                type="button"
+                onClick={() => {
+                  console.log("[v0] Generate email button clicked")
+                  handleGenerateEmail()
+                }}
                 disabled={generating}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
@@ -550,7 +566,11 @@ Use {{sender_name}} for the sender's name"
 
             <div className="flex justify-between pt-4">
               <button
-                onClick={() => setStep(emailMode === "ai" ? 2 : 1)}
+                type="button"
+                onClick={() => {
+                  console.log("[v0] Step 3 Back button clicked")
+                  setStep(emailMode === "ai" ? 2 : 1)
+                }}
                 className="inline-flex items-center gap-2 px-6 py-3 border border-border rounded-xl font-medium hover:bg-accent transition-all"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -559,7 +579,11 @@ Use {{sender_name}} for the sender's name"
                 Back
               </button>
               <button
-                onClick={handleCreateCampaign}
+                type="button"
+                onClick={() => {
+                  console.log("[v0] Create Campaign button clicked")
+                  handleCreateCampaign()
+                }}
                 disabled={loading}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
