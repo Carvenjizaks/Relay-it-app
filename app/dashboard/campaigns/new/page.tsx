@@ -46,6 +46,7 @@ export default function NewCampaignPage() {
   const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(null)
   const [editedSubject, setEditedSubject] = useState("")
   const [editedBody, setEditedBody] = useState("")
+  const [relayMessage, setRelayMessage] = useState("Know someone who would love this? Share it with them!")
 
   function handleUseManualEmail() {
     setGeneratedEmail({
@@ -125,6 +126,7 @@ export default function NewCampaignPage() {
         email_subject: editedSubject,
         email_body: editedBody,
         call_to_action: generatedEmail?.callToActionText || callToAction,
+        relay_message: relayMessage,
         created_by: user.id,
         status: "draft",
       })
@@ -364,6 +366,7 @@ Use {{sender_name}} for the sender's name"
             <div className="flex justify-end pt-4">
               {emailMode === "ai" ? (
                 <button
+                  type="button"
                   onClick={() => setStep(2)}
                   disabled={!name || !description || !eventUrl}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
@@ -375,6 +378,7 @@ Use {{sender_name}} for the sender's name"
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={handleUseManualEmail}
                   disabled={!name || !description || !eventUrl || !manualSubject || !manualBody}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
@@ -453,6 +457,7 @@ Use {{sender_name}} for the sender's name"
 
             <div className="flex justify-between pt-4">
               <button
+                type="button"
                 onClick={() => setStep(1)}
                 className="inline-flex items-center gap-2 px-6 py-3 border border-border rounded-xl font-medium hover:bg-accent transition-all"
               >
@@ -462,6 +467,7 @@ Use {{sender_name}} for the sender's name"
                 Back
               </button>
               <button
+                type="button"
                 onClick={handleGenerateEmail}
                 disabled={generating}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
@@ -545,11 +551,50 @@ Use {{sender_name}} for the sender's name"
                       .replace(/\{\{sender_name\}\}/g, "Sarah") 
                   }}
                 />
+                
+                {/* Relay-it Section */}
+                <div className="mt-6 pt-6 border-t border-dashed border-border">
+                  <div className="bg-gradient-to-r from-primary/10 via-info/10 to-primary/10 rounded-xl p-5 text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      <span className="font-bold text-primary">Relay-it</span>
+                    </div>
+                    <p className="text-sm text-foreground mb-3" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                      {relayMessage}
+                    </p>
+                    <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-full font-semibold text-sm cursor-pointer hover:bg-primary/90 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Send this to a friend
+                    </div>
+                  </div>
+                </div>
               </div>
+            </div>
+            
+            {/* Relay Message Customization */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Relay-it Message
+              </label>
+              <input
+                type="text"
+                value={relayMessage}
+                onChange={(e) => setRelayMessage(e.target.value)}
+                placeholder="Customize the sharing message..."
+                className="w-full px-4 py-3 bg-card text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder:text-muted-foreground"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                This message appears above the &quot;Send this to a friend&quot; button in every email
+              </p>
             </div>
 
             <div className="flex justify-between pt-4">
               <button
+                type="button"
                 onClick={() => setStep(emailMode === "ai" ? 2 : 1)}
                 className="inline-flex items-center gap-2 px-6 py-3 border border-border rounded-xl font-medium hover:bg-accent transition-all"
               >
@@ -559,6 +604,7 @@ Use {{sender_name}} for the sender's name"
                 Back
               </button>
               <button
+                type="button"
                 onClick={handleCreateCampaign}
                 disabled={loading}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
