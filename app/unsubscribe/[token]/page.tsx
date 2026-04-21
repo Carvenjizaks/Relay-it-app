@@ -10,10 +10,10 @@ export default async function UnsubscribePage({
   const { token } = await params
   const supabase = await createClient()
 
-  // Find the contact by their relay token or create a simple token system
+  // Find the contact by their ID (used as token for unsubscribe links)
   const { data: contact } = await supabase
     .from("contacts")
-    .select("id, name, email, unsubscribed, campaign:campaigns(title)")
+    .select("id, name, email, unsubscribed, campaign:campaigns!contacts_campaign_id_fkey(title)")
     .eq("id", token)
     .single()
 

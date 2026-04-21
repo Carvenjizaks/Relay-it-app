@@ -48,7 +48,7 @@ export default function ContactsPage() {
       const [contactsRes, campaignsRes] = await Promise.all([
         supabase
           .from("contacts")
-          .select("*, campaign:campaigns(id, title)")
+          .select("*, campaign:campaigns!contacts_campaign_id_fkey(id, title)")
           .order("created_at", { ascending: false })
           .limit(100),
         supabase
