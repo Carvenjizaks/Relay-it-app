@@ -6,10 +6,9 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: profile }, { data: campaigns }, { data: referrals }] = await Promise.all([
+  const [{ data: profile }, { data: campaigns }] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user!.id).single(),
     supabase.from("campaigns").select("*").order("created_at", { ascending: false }).limit(5),
-    supabase.from("referrals").select("*").eq("referrer_id", user!.id).order("created_at", { ascending: false }).limit(5),
   ])
 
   return (
