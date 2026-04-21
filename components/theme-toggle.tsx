@@ -3,7 +3,14 @@
 import { useTheme } from "./theme-provider"
 
 export function ThemeToggle() {
-  const { theme, toggleTheme } = useTheme()
+  const { theme, toggleTheme, mounted } = useTheme()
+
+  // Render a placeholder during SSR/hydration to prevent layout shift
+  if (!mounted) {
+    return (
+      <div className="w-14 h-7 bg-muted rounded-full" aria-hidden="true" />
+    )
+  }
 
   return (
     <button
