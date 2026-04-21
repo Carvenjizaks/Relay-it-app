@@ -310,11 +310,12 @@ export function EmailEditor({ value, onChange, placeholder = "Start writing your
         <div className="flex items-center gap-1 pr-2 border-r border-input">
           <select
             onChange={(e) => setFontSize(e.target.value)}
+            defaultValue="3"
             className="text-sm bg-transparent border-none focus:outline-none cursor-pointer"
             title="Font Size"
           >
             <option value="2">Small</option>
-            <option value="3" selected>Normal</option>
+            <option value="3">Normal</option>
             <option value="4">Large</option>
             <option value="5">X-Large</option>
           </select>

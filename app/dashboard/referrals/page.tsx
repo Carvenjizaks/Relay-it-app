@@ -16,7 +16,7 @@ export default async function ReferralsPage() {
     .from("contacts")
     .select(`
       *,
-      campaign:campaigns (
+      campaign:campaigns!contacts_campaign_id_fkey (
         id,
         title
       )
