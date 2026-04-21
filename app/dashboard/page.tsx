@@ -8,9 +8,11 @@ export default async function DashboardPage() {
 
   // Optimized: fetch profile and campaigns in parallel with minimal fields
   const [{ data: profile }, { data: campaigns }] = await Promise.all([
-    supabase.from("profiles").select("full_name, referral_code").eq("id", user!.id).single(),
+    supabase.from("profiles").select("full_name, referral_code, role").eq("id", user!.id).single(),
     supabase.from("campaigns").select("id, title, status, created_at").order("created_at", { ascending: false }).limit(5),
   ])
+
+  const isAdmin = profile?.role === "admin"
 
   return (
     <div className="p-8">
@@ -149,21 +151,26 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Referral Code Card */}
-      <div className="mt-6 p-6 bg-gradient-to-r from-primary/5 via-info/5 to-success/5 border border-border rounded-xl">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-foreground mb-1">Your Referral Code</h3>
-            <p className="text-sm text-muted-foreground">Share to earn credits when contacts convert</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <code className="px-4 py-2 bg-card border border-border rounded-lg font-mono text-foreground">
-              {profile?.referral_code}
-            </code>
-            <CopyButton text={profile?.referral_code || ""} />
+      {/* Admin Referral Code Card - Only visible to admins */}
+      {isAdmin && (
+        <div className="mt-6 p-6 bg-gradient-to-r from-primary/5 via-info/5 to-success/5 border border-border rounded-xl">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-foreground">Admin Referral Code</h3>
+                <span className="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full">Admin Only</span>
+              </div>
+              <p className="text-sm text-muted-foreground">Share to earn credits when contacts convert</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <code className="px-4 py-2 bg-card border border-border rounded-lg font-mono text-foreground">
+                {profile?.referral_code}
+              </code>
+              <CopyButton text={profile?.referral_code || ""} />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
