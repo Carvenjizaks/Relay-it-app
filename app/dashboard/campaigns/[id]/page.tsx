@@ -49,6 +49,9 @@ export default function CampaignDetailPage() {
   const [bulkContacts, setBulkContacts] = useState("")
   const [bulkAdding, setBulkAdding] = useState(false)
 
+  // Status message
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -184,10 +187,11 @@ export default function CampaignDetailPage() {
     setBulkAdding(false)
   }
 
-  async function sendEmailToContact(contact: Contact, relayToken: string, senderName: string) {
+  async function sendEmailToContact(contact: Contact & { referred_by_email?: string }, relayToken: string, senderName: string) {
     if (!campaign) return
 
     setSending(contact.id)
+    setStatusMessage(null)
 
     try {
       const response = await fetch("/api/send-email", {
@@ -199,7 +203,7 @@ export default function CampaignDetailPage() {
           recipientEmail: contact.email,
           recipientName: contact.name,
           senderName: senderName,
-          senderEmail: contact.referred_by_email || "noreply@relay-it.app",
+          senderEmail: contact.referred_by_email || process.env.SMTP_FROM_EMAIL || "noreply@relay-it.app",
           subject: campaign.email_subject,
           htmlContent: campaign.email_body,
           eventUrl: campaign.event_url,
@@ -208,21 +212,31 @@ export default function CampaignDetailPage() {
         }),
       })
 
+      const result = await response.json()
+
       if (response.ok) {
         await supabase
           .from("contacts")
-          .update({ status: "sent" })
+          .update({ status: "sent", email_sent: true })
           .eq("id", contact.id)
 
         setContacts(prev => 
           prev.map(c => c.id === contact.id ? { ...c, status: "sent" } : c)
         )
+        
+        setStatusMessage({ type: "success", text: `Email sent to ${contact.email}!` })
+      } else {
+        setStatusMessage({ type: "error", text: result.error || "Failed to send email" })
       }
     } catch (err) {
       console.error("Failed to send email:", err)
+      setStatusMessage({ type: "error", text: "Failed to send email. Check your SMTP settings." })
     }
 
     setSending(null)
+    
+    // Clear status message after 5 seconds
+    setTimeout(() => setStatusMessage(null), 5000)
   }
 
   async function activateCampaign() {
@@ -280,6 +294,28 @@ export default function CampaignDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Status Message */}
+      {statusMessage && (
+        <div className={`mb-6 p-4 rounded-lg ${
+          statusMessage.type === "success" 
+            ? "bg-green-100 text-green-800 border border-green-200" 
+            : "bg-red-100 text-red-800 border border-red-200"
+        }`}>
+          <div className="flex items-center gap-2">
+            {statusMessage.type === "success" ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className="font-medium">{statusMessage.text}</span>
+          </div>
+        </div>
+      )}
 
       {/* Campaign Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
