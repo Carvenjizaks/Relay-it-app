@@ -217,6 +217,22 @@ export default function NewCampaignPage() {
         </div>
       )}
 
+      {/* TEST BUTTON - Remove after debugging */}
+      <div className="mb-4 p-4 bg-yellow-100 border-2 border-yellow-500 rounded-lg">
+        <p className="text-sm text-yellow-800 mb-2">Debug: Click this test button to verify JavaScript is working:</p>
+        <button
+          type="button"
+          onClick={() => {
+            alert("Button clicked! JavaScript is working.")
+            setStep(2)
+          }}
+          className="px-4 py-2 bg-yellow-500 text-white rounded font-bold hover:bg-yellow-600"
+        >
+          TEST CLICK ME
+        </button>
+        <p className="text-xs text-yellow-700 mt-2">Current step: {step} | Name: {name || "(empty)"} | Description: {description || "(empty)"} | URL: {eventUrl || "(empty)"}</p>
+      </div>
+
       <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
         {/* Step 1: Basic Info */}
         {step === 1 && (
