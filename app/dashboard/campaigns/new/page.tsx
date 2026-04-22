@@ -100,46 +100,57 @@ export default function NewCampaignPage() {
   }
 
   async function handleCreateCampaign() {
+    console.log("[v0] handleCreateCampaign called")
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log("[v0] User:", user?.id)
 
-    if (!user) {
-      setError("You must be logged in")
+      if (!user) {
+        setError("You must be logged in")
+        setLoading(false)
+        return
+      }
+
+      console.log("[v0] Inserting campaign:", { name, description, eventUrl })
+      const { data, error } = await supabase
+        .from("campaigns")
+        .insert({
+          title: name,
+          description,
+          event_url: eventUrl,
+          event_date: eventDate ? new Date(eventDate).toISOString() : null,
+          event_location: eventLocation || null,
+          target_audience: targetAudience || null,
+          tone,
+          key_benefits: keyBenefits || null,
+          email_subject: editedSubject,
+          email_body: editedBody,
+          call_to_action: generatedEmail?.callToActionText || callToAction,
+          relay_message: relayMessage,
+          created_by: user.id,
+          status: "draft",
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.log("[v0] Error creating campaign:", error.message)
+        setError(error.message)
+        setLoading(false)
+        return
+      }
+
+      console.log("[v0] Campaign created:", data.id)
+      router.push(`/dashboard/campaigns/${data.id}`)
+    } catch (err) {
+      console.log("[v0] Exception:", err)
+      setError("An unexpected error occurred")
       setLoading(false)
-      return
     }
-
-    const { data, error } = await supabase
-      .from("campaigns")
-      .insert({
-        title: name,
-        description,
-        event_url: eventUrl,
-        event_date: eventDate ? new Date(eventDate).toISOString() : null,
-        event_location: eventLocation || null,
-        target_audience: targetAudience || null,
-        tone,
-        key_benefits: keyBenefits || null,
-        email_subject: editedSubject,
-        email_body: editedBody,
-        call_to_action: generatedEmail?.callToActionText || callToAction,
-        relay_message: relayMessage,
-        created_by: user.id,
-        status: "draft",
-      })
-      .select()
-      .single()
-
-    if (error) {
-      setError(error.message)
-      setLoading(false)
-      return
-    }
-
-    router.push(`/dashboard/campaigns/${data.id}`)
   }
 
   return (
@@ -367,7 +378,10 @@ Use {{sender_name}} for the sender's name"
               {emailMode === "ai" ? (
                 <button
                   type="button"
-                  onClick={() => setStep(2)}
+                  onClick={() => {
+                    console.log("[v0] Next AI Settings clicked, setting step to 2")
+                    setStep(2)
+                  }}
                   disabled={!name || !description || !eventUrl}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
                 >
@@ -379,7 +393,10 @@ Use {{sender_name}} for the sender's name"
               ) : (
                 <button
                   type="button"
-                  onClick={handleUseManualEmail}
+                  onClick={() => {
+                    console.log("[v0] Next Review Email clicked")
+                    handleUseManualEmail()
+                  }}
                   disabled={!name || !description || !eventUrl || !manualSubject || !manualBody}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-warning text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-primary/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:-translate-y-0.5"
                 >
