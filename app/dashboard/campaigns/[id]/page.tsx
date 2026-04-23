@@ -15,7 +15,8 @@ interface Campaign {
   event_location: string | null
   email_subject: string
   email_body: string
-  call_to_action: string
+  call_to_action: string | null
+  relay_message: string | null
   status: string
   created_at: string
 }
