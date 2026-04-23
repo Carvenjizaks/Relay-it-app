@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer"
+
 export async function POST(req: Request) {
   try {
     const { email, name } = await req.json()
@@ -6,16 +8,29 @@ export async function POST(req: Request) {
       return Response.json({ error: "Email and name are required" }, { status: 400 })
     }
 
-    const apiKey = process.env.SMTP_PASS
-    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER
+    const smtpHost = process.env.SMTP_HOST || "send.smtp.com"
+    const smtpPort = parseInt(process.env.SMTP_PORT || "2525")
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    const fromEmail = process.env.SMTP_FROM_EMAIL || smtpUser
     const fromName = process.env.SMTP_FROM_NAME || "Relay-it"
-    const channelName = process.env.SMTP_CHANNEL || "thefatherhoofoundation"
 
-    if (!apiKey || !fromEmail) {
+    if (!smtpUser || !smtpPass) {
       return Response.json({
-        error: "Email credentials not configured. Please set SMTP_PASS (API key) and SMTP_FROM_EMAIL."
+        error: "SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS."
       }, { status: 500 })
     }
+
+    // Configure nodemailer with SMTP.com settings
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    })
 
     const html = `<!DOCTYPE html>
 <html>
@@ -36,42 +51,25 @@ export async function POST(req: Request) {
 </body>
 </html>`
 
-    // Send via SMTP.com REST API v4
-    const smtpRes = await fetch("https://api.smtp.com/v4/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        channel: channelName,
-        recipients: {
-          to: [{ address: { email, name } }],
-        },
-        originator: {
-          from: { address: { email: fromEmail, name: fromName } },
-        },
-        subject: "Test Email from Relay-it",
-        body: {
-          parts: [{ type: "text/html", content: html }],
-        },
-      }),
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: email,
+      subject: "Test Email from Relay-it",
+      html,
     })
 
-    const smtpData = await smtpRes.json()
-
-    if (!smtpRes.ok) {
-      const errMsg = smtpData?.data?.message || smtpData?.message || JSON.stringify(smtpData)
-      console.error("SMTP.com API error:", errMsg)
-      return Response.json({ error: `Email send failed: ${errMsg}` }, { status: 500 })
-    }
-
-    return Response.json({ success: true, messageId: smtpData?.data?.id || "sent" })
+    return Response.json({ success: true, messageId: info.messageId })
   } catch (error) {
     console.error("Test email error:", error)
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to send email" },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : "Failed to send email"
+    
+    let friendlyMessage = message
+    if (message.includes("535") || message.includes("Invalid login")) {
+      friendlyMessage = "SMTP authentication failed. Please check your SMTP_USER and SMTP_PASS credentials."
+    } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
+      friendlyMessage = "Cannot connect to SMTP server. Try changing SMTP_PORT to 2525, 587, or 465."
+    }
+
+    return Response.json({ error: friendlyMessage }, { status: 500 })
   }
 }

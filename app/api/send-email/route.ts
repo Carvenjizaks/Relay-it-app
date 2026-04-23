@@ -1,3 +1,4 @@
+import nodemailer from "nodemailer"
 import { createClient } from "@/lib/supabase/server"
 
 export async function POST(req: Request) {
@@ -14,7 +15,6 @@ export async function POST(req: Request) {
       eventUrl,
       relayToken,
       contactId,
-      isRelay
     } = body
 
     const supabase = await createClient()
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
     const relayMessage = campaign.relay_message || "Know someone who would love this? Share it with them!"
 
-    // Build full email HTML with Substack-style formatting
+    // Build full email HTML
     const fullHtml = `
 <!DOCTYPE html>
 <html>
@@ -87,51 +87,41 @@ export async function POST(req: Request) {
 </html>
 `
 
-    // Validate API key
-    const apiKey = process.env.SMTP_PASS
-    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER
+    // SMTP config
+    const smtpHost = process.env.SMTP_HOST || "send.smtp.com"
+    const smtpPort = parseInt(process.env.SMTP_PORT || "2525")
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    const fromEmail = process.env.SMTP_FROM_EMAIL || smtpUser
     const fromName = process.env.SMTP_FROM_NAME || senderName || "Relay-it"
-    const channelName = process.env.SMTP_CHANNEL || "thefatherhoofoundation"
 
-    if (!apiKey || !fromEmail) {
+    if (!smtpUser || !smtpPass) {
       return Response.json(
-        { error: "Email credentials not configured. Please set SMTP_PASS (API key) and SMTP_FROM_EMAIL." },
+        { error: "SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS." },
         { status: 500 }
       )
     }
 
-    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
-
-    // Send via SMTP.com REST API v4
-    const smtpRes = await fetch("https://api.smtp.com/v4/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+    // Configure nodemailer
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
       },
-      body: JSON.stringify({
-        channel: channelName,
-        recipients: {
-          to: [{ address: { email: recipientEmail, name: recipientName } }],
-        },
-        originator: {
-          from: { address: { email: fromEmail, name: fromName } },
-          reply_to: senderEmail ? [{ address: { email: senderEmail } }] : undefined,
-        },
-        subject: finalSubject,
-        body: {
-          parts: [{ type: "text/html", content: fullHtml }],
-        },
-      }),
     })
 
-    const smtpData = await smtpRes.json()
+    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
 
-    if (!smtpRes.ok) {
-      const errMsg = smtpData?.data?.message || smtpData?.message || JSON.stringify(smtpData)
-      console.error("SMTP.com API error:", errMsg)
-      return Response.json({ error: `Email send failed: ${errMsg}` }, { status: 500 })
-    }
+    const info = await transporter.sendMail({
+      from: `"${fromName}" <${fromEmail}>`,
+      to: recipientEmail,
+      subject: finalSubject,
+      html: fullHtml,
+      replyTo: senderEmail,
+    })
 
     // Mark contact as email sent
     if (contactId) {
@@ -141,12 +131,18 @@ export async function POST(req: Request) {
         .eq("id", contactId)
     }
 
-    return Response.json({ success: true, messageId: smtpData?.data?.id || "sent" })
+    return Response.json({ success: true, messageId: info.messageId })
   } catch (error) {
     console.error("Error sending email:", error)
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to send email" },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : "Failed to send email"
+    
+    let friendlyMessage = message
+    if (message.includes("535") || message.includes("Invalid login")) {
+      friendlyMessage = "SMTP authentication failed. Please check your SMTP_USER and SMTP_PASS credentials."
+    } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
+      friendlyMessage = "Cannot connect to SMTP server. Try changing SMTP_PORT to 2525, 587, or 465."
+    }
+
+    return Response.json({ error: friendlyMessage }, { status: 500 })
   }
 }
