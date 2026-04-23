@@ -1,9 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
+
+interface ContactList {
+  id: string
+  name: string
+  contact_count: number
+}
+
+interface Contact {
+  id: string
+  name: string
+  email: string
+}
 
 export default function NewCampaignPage() {
   const router = useRouter()
@@ -19,12 +31,50 @@ export default function NewCampaignPage() {
   const [emailBody, setEmailBody] = useState("")
   const [relayMessage, setRelayMessage] = useState("Know someone who would love this? Share it with them!")
 
+  // Contact list selection
+  const [contactLists, setContactLists] = useState<ContactList[]>([])
+  const [selectedListId, setSelectedListId] = useState<string>("")
+  const [listContacts, setListContacts] = useState<Contact[]>([])
+  const [loadingContacts, setLoadingContacts] = useState(false)
+
+  const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    fetchContactLists()
+  }, [])
+
+  useEffect(() => {
+    if (selectedListId) {
+      fetchListContacts(selectedListId)
+    } else {
+      setListContacts([])
+    }
+  }, [selectedListId])
+
+  async function fetchContactLists() {
+    const { data } = await supabase
+      .from("contact_lists")
+      .select("id, name, contact_count")
+      .order("name", { ascending: true })
+    if (data) setContactLists(data)
+  }
+
+  async function fetchListContacts(listId: string) {
+    setLoadingContacts(true)
+    const { data } = await supabase
+      .from("contacts")
+      .select("id, name, email")
+      .eq("list_id", listId)
+      .order("name", { ascending: true })
+    if (data) setListContacts(data)
+    setLoadingContacts(false)
+  }
+
   async function handleCreateCampaign() {
     setLoading(true)
     setError(null)
 
     try {
-      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
       if (!user) {
@@ -33,7 +83,8 @@ export default function NewCampaignPage() {
         return
       }
 
-      const { data, error: insertError } = await supabase
+      // Create campaign
+      const { data: campaign, error: insertError } = await supabase
         .from("campaigns")
         .insert({
           title: name,
@@ -54,7 +105,29 @@ export default function NewCampaignPage() {
         return
       }
 
-      router.push(`/dashboard/campaigns`)
+      // If a list was selected, copy contacts to the campaign
+      if (selectedListId && listContacts.length > 0) {
+        const contactsToInsert = listContacts.map(c => ({
+          name: c.name,
+          email: c.email,
+          campaign_id: campaign.id,
+          list_id: selectedListId,
+          relay_depth: 0,
+          email_sent: false,
+          has_relayed: false,
+          relay_count: 0,
+        }))
+
+        const { error: contactsError } = await supabase
+          .from("contacts")
+          .insert(contactsToInsert)
+
+        if (contactsError) {
+          console.error("Error adding contacts:", contactsError)
+        }
+      }
+
+      router.push(`/dashboard/campaigns/${campaign.id}`)
     } catch (err) {
       setError("An unexpected error occurred")
       setLoading(false)
@@ -75,7 +148,7 @@ export default function NewCampaignPage() {
           Back to Campaigns
         </Link>
         <h1 className="text-2xl font-bold text-foreground mt-2">Create New Campaign</h1>
-        <p className="text-muted-foreground">Step {step} of 2</p>
+        <p className="text-muted-foreground">Step {step} of 3</p>
       </div>
 
       {error && (
@@ -199,8 +272,98 @@ export default function NewCampaignPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setStep(3)}
+                disabled={!emailSubject || !emailBody}
+                className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next: Select Contacts
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Select Contact List */}
+        {step === 3 && (
+          <div className="space-y-6">
+            <h2 className="text-lg font-semibold text-foreground">Select Contacts</h2>
+            <p className="text-sm text-muted-foreground">
+              Choose a contact list to add to this campaign. You can also add individual contacts after creation.
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Contact List
+              </label>
+              <select
+                value={selectedListId}
+                onChange={(e) => setSelectedListId(e.target.value)}
+                className="w-full px-4 py-3 bg-background text-foreground border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">No list selected (add contacts later)</option>
+                {contactLists.map(list => (
+                  <option key={list.id} value={list.id}>
+                    {list.name} ({list.contact_count} contacts)
+                  </option>
+                ))}
+              </select>
+              {contactLists.length === 0 && (
+                <p className="mt-2 text-sm text-muted-foreground">
+                  No contact lists found.{" "}
+                  <Link href="/dashboard/contacts" className="text-primary hover:underline">
+                    Create a list first
+                  </Link>
+                </p>
+              )}
+            </div>
+
+            {/* Preview selected contacts */}
+            {selectedListId && (
+              <div className="border border-border rounded-lg overflow-hidden">
+                <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">
+                    {loadingContacts ? "Loading..." : `${listContacts.length} contacts in this list`}
+                  </span>
+                </div>
+                {!loadingContacts && listContacts.length > 0 && (
+                  <div className="max-h-60 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/30 sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Name</th>
+                          <th className="text-left px-4 py-2 font-medium text-muted-foreground">Email</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {listContacts.slice(0, 20).map(contact => (
+                          <tr key={contact.id}>
+                            <td className="px-4 py-2 text-foreground">{contact.name}</td>
+                            <td className="px-4 py-2 text-muted-foreground">{contact.email}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {listContacts.length > 20 && (
+                      <div className="px-4 py-2 text-center text-sm text-muted-foreground bg-muted/30">
+                        ... and {listContacts.length - 20} more
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4">
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="px-6 py-3 border border-border rounded-lg font-medium hover:bg-accent transition-colors"
+              >
+                Back
+              </button>
+              <button
+                type="button"
                 onClick={handleCreateCampaign}
-                disabled={loading || !emailSubject || !emailBody}
+                disabled={loading}
                 className="px-6 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? "Creating..." : "Create Campaign"}
