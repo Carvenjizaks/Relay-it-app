@@ -264,8 +264,7 @@ export default function CampaignDetailPage() {
 
   async function handleDeleteCampaign() {
     setDeleting(true)
-    // Delete contacts first (FK constraint), then relay tokens, then campaign
-    await supabase.from("contacts").delete().eq("campaign_id", params.id)
+    // Only delete relay tokens and campaign — keep contacts intact
     await supabase.from("relay_tokens").delete().eq("campaign_id", params.id)
     const { error } = await supabase.from("campaigns").delete().eq("id", params.id)
     if (error) {
@@ -552,7 +551,7 @@ export default function CampaignDetailPage() {
               Are you sure you want to delete <span className="font-semibold">{campaign.title}</span>?
             </p>
             <p className="text-sm text-muted-foreground mb-6">
-              All contacts and relay data associated with this campaign will be permanently deleted.
+              The campaign and its relay data will be deleted. Your contacts will be preserved.
             </p>
             <div className="flex gap-3 justify-end">
               <button

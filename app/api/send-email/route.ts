@@ -102,11 +102,13 @@ export async function POST(req: Request) {
       port: parseInt(process.env.SMTP_PORT || "587"),
       secure: process.env.SMTP_PORT === "465",
       auth: {
+        type: "LOGIN",
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
       tls: {
         rejectUnauthorized: false,
+        ciphers: "SSLv3",
       },
     })
 
