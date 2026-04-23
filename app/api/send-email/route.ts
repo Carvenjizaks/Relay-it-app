@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer"
 import { createClient } from "@/lib/supabase/server"
 
 export async function POST(req: Request) {
@@ -88,80 +87,66 @@ export async function POST(req: Request) {
 </html>
 `
 
-    // Validate SMTP config is present
-    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    // Validate API key
+    const apiKey = process.env.SMTP_PASS
+    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER
+    const fromName = process.env.SMTP_FROM_NAME || senderName || "Relay-it"
+    const channelName = process.env.SMTP_CHANNEL || "thefatherhoofoundation"
+
+    if (!apiKey || !fromEmail) {
       return Response.json(
-        { error: "SMTP credentials are not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables." },
+        { error: "Email credentials not configured. Please set SMTP_PASS (API key) and SMTP_FROM_EMAIL." },
         { status: 500 }
       )
     }
 
-    // Configure SMTP transporter
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || "587"),
-      secure: process.env.SMTP_PORT === "465",
-      auth: {
-        type: "LOGIN",
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
+
+    // Send via SMTP.com REST API v4
+    const smtpRes = await fetch("https://api.smtp.com/v4/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
       },
-      tls: {
-        rejectUnauthorized: false,
-        ciphers: "SSLv3",
-      },
+      body: JSON.stringify({
+        channel: channelName,
+        recipients: {
+          to: [{ address: { email: recipientEmail, name: recipientName } }],
+        },
+        originator: {
+          from: { address: { email: fromEmail, name: fromName } },
+          reply_to: senderEmail ? [{ address: { email: senderEmail } }] : undefined,
+        },
+        subject: finalSubject,
+        body: {
+          parts: [{ type: "text/html", content: fullHtml }],
+        },
+      }),
     })
 
-    const fromName = process.env.SMTP_FROM_NAME || senderName || "Relay-it"
-    const fromEmail = process.env.SMTP_FROM_EMAIL || process.env.SMTP_USER
+    const smtpData = await smtpRes.json()
 
-    // Send email via SMTP
-    const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: recipientEmail,
-      subject: subject.replace(/\{\{recipient_name\}\}/g, recipientName),
-      html: fullHtml,
-      replyTo: senderEmail,
-    })
-
-    // Log the email in database (ignore errors if table doesn't exist)
-    try {
-      await supabase.from("email_logs").insert({
-        campaign_id: campaignId,
-        contact_id: contactId,
-        email_type: isRelay ? "relay" : "initial",
-        subject,
-        sent_to: recipientEmail,
-        sent_at: new Date().toISOString(),
-        status: "sent",
-        message_id: info.messageId,
-      })
-    } catch {
-      // Email logs table may not exist, that's okay
+    if (!smtpRes.ok) {
+      const errMsg = smtpData?.data?.message || smtpData?.message || JSON.stringify(smtpData)
+      console.error("SMTP.com API error:", errMsg)
+      return Response.json({ error: `Email send failed: ${errMsg}` }, { status: 500 })
     }
 
     // Mark contact as email sent
     if (contactId) {
       await supabase
         .from("contacts")
-        .update({ email_sent: true })
+        .update({ email_sent: true, email_sent_at: new Date().toISOString() })
         .eq("id", contactId)
     }
 
-    return Response.json({ success: true, messageId: info.messageId })
+    return Response.json({ success: true, messageId: smtpData?.data?.id || "sent" })
   } catch (error) {
     console.error("Error sending email:", error)
-    const message = error instanceof Error ? error.message : "Failed to send email"
-    let friendlyMessage = message
-
-    if (message.includes("535") || message.includes("Invalid login") || message.includes("5.7.8")) {
-      friendlyMessage = `SMTP authentication failed. Please verify SMTP_USER and SMTP_PASS are correct for ${process.env.SMTP_HOST || "your mail server"}. Check with your email host for the correct credentials.`
-    } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
-      friendlyMessage = `Cannot connect to SMTP server (${process.env.SMTP_HOST}:${process.env.SMTP_PORT}). Please verify SMTP_HOST and SMTP_PORT are correct.`
-    } else if (message.includes("ENOTFOUND")) {
-      friendlyMessage = `SMTP host "${process.env.SMTP_HOST}" could not be found. Please check the SMTP_HOST environment variable.`
-    }
-
-    return Response.json({ error: friendlyMessage }, { status: 500 })
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to send email" },
+      { status: 500 }
+    )
   }
 }
