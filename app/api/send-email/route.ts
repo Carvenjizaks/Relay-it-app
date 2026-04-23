@@ -153,9 +153,11 @@ export async function POST(req: Request) {
     let friendlyMessage = message
 
     if (message.includes("535") || message.includes("Invalid login") || message.includes("5.7.8")) {
-      friendlyMessage = "SMTP authentication failed (535). If using Gmail, you must use an App Password — go to Google Account > Security > 2-Step Verification > App Passwords and generate one, then update SMTP_PASS in your environment variables."
+      friendlyMessage = `SMTP authentication failed. Please verify SMTP_USER and SMTP_PASS are correct for ${process.env.SMTP_HOST || "your mail server"}. Check with your email host for the correct credentials.`
     } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
-      friendlyMessage = "Cannot connect to SMTP server. Please check SMTP_HOST and SMTP_PORT environment variables."
+      friendlyMessage = `Cannot connect to SMTP server (${process.env.SMTP_HOST}:${process.env.SMTP_PORT}). Please verify SMTP_HOST and SMTP_PORT are correct.`
+    } else if (message.includes("ENOTFOUND")) {
+      friendlyMessage = `SMTP host "${process.env.SMTP_HOST}" could not be found. Please check the SMTP_HOST environment variable.`
     }
 
     return Response.json({ error: friendlyMessage }, { status: 500 })
