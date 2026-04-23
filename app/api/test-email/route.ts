@@ -21,7 +21,9 @@ export async function POST(req: Request) {
       }, { status: 500 })
     }
 
-    // Configure nodemailer with SMTP.com settings
+    console.log("[v0] SMTP Config:", { host: smtpHost, port: smtpPort, user: smtpUser, fromEmail })
+
+    // Configure nodemailer for SMTP.com
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
@@ -30,6 +32,13 @@ export async function POST(req: Request) {
         user: smtpUser,
         pass: smtpPass,
       },
+      authMethod: "LOGIN",
+      tls: {
+        rejectUnauthorized: false,
+        ciphers: "SSLv3",
+      },
+      debug: true,
+      logger: true,
     })
 
     const html = `<!DOCTYPE html>
@@ -60,16 +69,20 @@ export async function POST(req: Request) {
 
     return Response.json({ success: true, messageId: info.messageId })
   } catch (error) {
-    console.error("Test email error:", error)
+    console.error("[v0] Test email error:", error)
     const message = error instanceof Error ? error.message : "Failed to send email"
+    const fullError = error instanceof Error ? error.stack : String(error)
+    console.error("[v0] Full error:", fullError)
     
-    let friendlyMessage = message
-    if (message.includes("535") || message.includes("Invalid login")) {
-      friendlyMessage = "SMTP authentication failed. Please check your SMTP_USER and SMTP_PASS credentials."
-    } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
-      friendlyMessage = "Cannot connect to SMTP server. Try changing SMTP_PORT to 2525, 587, or 465."
-    }
-
-    return Response.json({ error: friendlyMessage }, { status: 500 })
+    // Return the actual error for debugging
+    return Response.json({ 
+      error: message,
+      debug: {
+        host: process.env.SMTP_HOST,
+        port: process.env.SMTP_PORT,
+        user: process.env.SMTP_USER,
+        from: process.env.SMTP_FROM_EMAIL,
+      }
+    }, { status: 500 })
   }
 }
