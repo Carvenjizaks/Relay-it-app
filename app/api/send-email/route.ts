@@ -88,6 +88,14 @@ export async function POST(req: Request) {
 </html>
 `
 
+    // Validate SMTP config is present
+    if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+      return Response.json(
+        { error: "SMTP credentials are not configured. Please set SMTP_HOST, SMTP_USER, and SMTP_PASS environment variables." },
+        { status: 500 }
+      )
+    }
+
     // Configure SMTP transporter
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -96,6 +104,9 @@ export async function POST(req: Request) {
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     })
 
@@ -138,9 +149,15 @@ export async function POST(req: Request) {
     return Response.json({ success: true, messageId: info.messageId })
   } catch (error) {
     console.error("Error sending email:", error)
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to send email" },
-      { status: 500 }
-    )
+    const message = error instanceof Error ? error.message : "Failed to send email"
+    let friendlyMessage = message
+
+    if (message.includes("535") || message.includes("Invalid login") || message.includes("5.7.8")) {
+      friendlyMessage = "SMTP authentication failed (535). If using Gmail, you must use an App Password — go to Google Account > Security > 2-Step Verification > App Passwords and generate one, then update SMTP_PASS in your environment variables."
+    } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
+      friendlyMessage = "Cannot connect to SMTP server. Please check SMTP_HOST and SMTP_PORT environment variables."
+    }
+
+    return Response.json({ error: friendlyMessage }, { status: 500 })
   }
 }
