@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { CampaignDeleteButton } from "@/components/campaign-delete-button"
 
 export default async function CampaignsPage() {
   const supabase = await createClient()
@@ -160,6 +161,7 @@ export default async function CampaignsPage() {
                   }`}>
                     {campaign.status || "draft"}
                   </span>
+                  <CampaignDeleteButton campaignId={campaign.id} campaignTitle={campaign.title} />
                   <svg className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
