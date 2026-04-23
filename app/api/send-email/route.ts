@@ -102,14 +102,18 @@ export async function POST(req: Request) {
       )
     }
 
-    // Configure nodemailer
+    // Configure nodemailer with AUTH LOGIN for SMTP.com
     const transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
       secure: smtpPort === 465,
       auth: {
+        type: "login",
         user: smtpUser,
         pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     })
 
