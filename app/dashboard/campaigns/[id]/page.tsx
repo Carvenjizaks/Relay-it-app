@@ -55,6 +55,10 @@ export default function CampaignDetailPage() {
   // Status message
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  // Delete
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -251,11 +255,26 @@ export default function CampaignDetailPage() {
 
   async function activateCampaign() {
     await supabase
-      .from("campaigns")
-      .update({ status: "active" })
-      .eq("id", params.id)
-
+    .from("campaigns")
+    .update({ status: "active" })
+    .eq("id", params.id)
+    
     setCampaign(prev => prev ? { ...prev, status: "active" } : null)
+  }
+
+  async function handleDeleteCampaign() {
+    setDeleting(true)
+    // Delete contacts first (FK constraint), then relay tokens, then campaign
+    await supabase.from("contacts").delete().eq("campaign_id", params.id)
+    await supabase.from("relay_tokens").delete().eq("campaign_id", params.id)
+    const { error } = await supabase.from("campaigns").delete().eq("id", params.id)
+    if (error) {
+      setStatusMessage({ type: "error", text: `Failed to delete: ${error.message}` })
+      setDeleting(false)
+      setShowDeleteModal(false)
+      return
+    }
+    router.push("/dashboard/campaigns")
   }
 
   if (loading) {
@@ -294,14 +313,27 @@ export default function CampaignDetailPage() {
             </div>
             <p className="text-muted-foreground mt-1">{campaign.description}</p>
           </div>
-          {campaign.status === "draft" && (
+          <div className="flex items-center gap-3">
+            {campaign.status === "draft" && (
+              <button
+                type="button"
+                onClick={activateCampaign}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+              >
+                Activate Campaign
+              </button>
+            )}
             <button
-              onClick={activateCampaign}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-destructive/40 text-destructive rounded-lg font-medium hover:bg-destructive/10 transition-colors"
             >
-              Activate Campaign
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
             </button>
-          )}
+          </div>
         </div>
       </div>
 
@@ -500,6 +532,56 @@ export default function CampaignDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Delete Campaign</h3>
+                <p className="text-sm text-muted-foreground">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-sm text-foreground mb-2">
+              Are you sure you want to delete <span className="font-semibold">{campaign.title}</span>?
+            </p>
+            <p className="text-sm text-muted-foreground mb-6">
+              All contacts and relay data associated with this campaign will be permanently deleted.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleting}
+                className="px-4 py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCampaign}
+                disabled={deleting}
+                className="px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {deleting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete Campaign"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
