@@ -25,9 +25,12 @@ interface Contact {
   name: string
   email: string
   relay_depth: number
-  referred_by_name: string | null
+  referred_by_contact_id: string | null
+  email_sent: boolean
+  has_relayed: boolean
+  relay_count: number
+  cellphone: string | null
   created_at: string
-  status: string
 }
 
 export default function CampaignDetailPage() {
@@ -103,21 +106,28 @@ export default function CampaignDetailPage() {
         name: newName,
         email: newEmail,
         relay_depth: 0,
-        referred_by_name: profile?.full_name || user.email,
-        referred_by_email: user.email,
-        status: "pending",
+        email_sent: false,
+        has_relayed: false,
+        relay_count: 0,
       })
       .select()
       .single()
 
-    if (!error && contact) {
+    if (error) {
+      console.log("[v0] Contact insert error:", error.message)
+      setStatusMessage({ type: "error", text: `Failed to save contact: ${error.message}` })
+      setAddingContact(false)
+      return
+    }
+
+    if (contact) {
       // Create relay token
       await supabase.from("relay_tokens").insert({
         token: relayToken,
         campaign_id: params.id,
         contact_id: contact.id,
-        sender_name: newName,
-        sender_email: newEmail,
+        sender_name: profile?.full_name || user.email || "Team",
+        sender_email: user.email,
       })
 
       setContacts([contact, ...contacts])
@@ -126,7 +136,7 @@ export default function CampaignDetailPage() {
       setShowAddContact(false)
 
       // Auto-send email
-      await sendEmailToContact(contact, relayToken, profile?.full_name || user.email || "Team")
+      await sendEmailToContact(contact, relayToken, profile?.full_name || user.email || "Team", user.email || "")
     }
 
     setAddingContact(false)
@@ -160,9 +170,9 @@ export default function CampaignDetailPage() {
             name,
             email,
             relay_depth: 0,
-            referred_by_name: profile?.full_name || user.email,
-            referred_by_email: user.email,
-            status: "pending",
+            email_sent: false,
+            has_relayed: false,
+            relay_count: 0,
           })
           .select()
           .single()
@@ -172,11 +182,11 @@ export default function CampaignDetailPage() {
             token: relayToken,
             campaign_id: params.id,
             contact_id: contact.id,
-            sender_name: name,
-            sender_email: email,
+            sender_name: profile?.full_name || user.email || "Team",
+            sender_email: user.email,
           })
 
-          await sendEmailToContact(contact, relayToken, profile?.full_name || user.email || "Team")
+          await sendEmailToContact(contact, relayToken, profile?.full_name || user.email || "Team", user.email || "")
         }
       }
     }
@@ -187,7 +197,7 @@ export default function CampaignDetailPage() {
     setBulkAdding(false)
   }
 
-  async function sendEmailToContact(contact: Contact & { referred_by_email?: string }, relayToken: string, senderName: string) {
+  async function sendEmailToContact(contact: Contact, relayToken: string, senderName: string, senderEmail: string) {
     if (!campaign) return
 
     setSending(contact.id)
@@ -203,7 +213,7 @@ export default function CampaignDetailPage() {
           recipientEmail: contact.email,
           recipientName: contact.name,
           senderName: senderName,
-          senderEmail: contact.referred_by_email || process.env.SMTP_FROM_EMAIL || "noreply@relay-it.app",
+          senderEmail: senderEmail || "noreply@relay-it.app",
           subject: campaign.email_subject,
           htmlContent: campaign.email_body,
           eventUrl: campaign.event_url,
@@ -217,11 +227,11 @@ export default function CampaignDetailPage() {
       if (response.ok) {
         await supabase
           .from("contacts")
-          .update({ status: "sent", email_sent: true })
+          .update({ email_sent: true, email_sent_at: new Date().toISOString() })
           .eq("id", contact.id)
 
         setContacts(prev => 
-          prev.map(c => c.id === contact.id ? { ...c, status: "sent" } : c)
+          prev.map(c => c.id === contact.id ? { ...c, email_sent: true } : c)
         )
         
         setStatusMessage({ type: "success", text: `Email sent to ${contact.email}!` })
@@ -446,7 +456,6 @@ export default function CampaignDetailPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Referred By</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Depth</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Added</th>
@@ -462,9 +471,6 @@ export default function CampaignDetailPage() {
                       {contact.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                      {contact.referred_by_name || "Direct"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         contact.relay_depth === 0 
                           ? "bg-blue-100 text-blue-700" 
@@ -475,13 +481,13 @@ export default function CampaignDetailPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        contact.status === "sent" 
-                          ? "bg-green-100 text-green-700" 
-                          : contact.status === "pending"
+                        sending === contact.id
                           ? "bg-yellow-100 text-yellow-700"
+                          : contact.email_sent
+                          ? "bg-green-100 text-green-700"
                           : "bg-gray-100 text-gray-700"
                       }`}>
-                        {sending === contact.id ? "Sending..." : contact.status}
+                        {sending === contact.id ? "Sending..." : contact.email_sent ? "Sent" : "Pending"}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
