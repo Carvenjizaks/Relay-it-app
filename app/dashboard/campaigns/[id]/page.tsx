@@ -59,6 +59,10 @@ export default function CampaignDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Selection for bulk email
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkSending, setBulkSending] = useState(false)
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -253,6 +257,94 @@ export default function CampaignDetailPage() {
     setTimeout(() => setStatusMessage(null), 5000)
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === contacts.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(contacts.map(c => c.id)))
+    }
+  }
+
+  async function handleBulkSend() {
+    setBulkSending(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single()
+
+    const selected = contacts.filter(c => selectedIds.has(c.id))
+
+    for (const contact of selected) {
+      const { data: tokenRow } = await supabase
+        .from("relay_tokens")
+        .select("token")
+        .eq("contact_id", contact.id)
+        .single()
+
+      let token = tokenRow?.token
+      if (!token) {
+        token = nanoid(21)
+        await supabase.from("relay_tokens").insert({
+          token,
+          campaign_id: params.id,
+          contact_id: contact.id,
+          sender_name: profile?.full_name || user.email || "Team",
+          sender_email: user.email,
+        })
+      }
+
+      await sendEmailToContact(contact, token, profile?.full_name || user.email || "Team", user.email || "")
+    }
+
+    setSelectedIds(new Set())
+    setBulkSending(false)
+    setStatusMessage({ type: "success", text: `Emails sent to ${selected.length} contact${selected.length !== 1 ? "s" : ""}!` })
+    setTimeout(() => setStatusMessage(null), 5000)
+  }
+
+  async function handleSendOne(contact: Contact) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .single()
+
+    const { data: tokenRow } = await supabase
+      .from("relay_tokens")
+      .select("token")
+      .eq("contact_id", contact.id)
+      .single()
+
+    let token = tokenRow?.token
+    if (!token) {
+      token = nanoid(21)
+      await supabase.from("relay_tokens").insert({
+        token,
+        campaign_id: params.id,
+        contact_id: contact.id,
+        sender_name: profile?.full_name || user.email || "Team",
+        sender_email: user.email,
+      })
+    }
+
+    await sendEmailToContact(contact, token, profile?.full_name || user.email || "Team", user.email || "")
+  }
+
   async function activateCampaign() {
     await supabase
     .from("campaigns")
@@ -373,7 +465,7 @@ export default function CampaignDetailPage() {
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-sm text-muted-foreground">Emails Sent</p>
           <p className="text-2xl font-bold text-foreground">
-            {contacts.filter(c => c.status === "sent").length}
+            {contacts.filter(c => c.email_sent).length}
           </p>
         </div>
       </div>
@@ -475,6 +567,44 @@ export default function CampaignDetailPage() {
           </div>
         )}
 
+        {/* Bulk Action Toolbar */}
+        {selectedIds.size > 0 && (
+          <div className="px-6 py-3 bg-primary/5 border-b border-border flex items-center justify-between">
+            <span className="text-sm font-medium text-foreground">
+              {selectedIds.size} contact{selectedIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+              >
+                Deselect All
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkSend}
+                disabled={bulkSending}
+                className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary text-primary-foreground text-sm rounded-lg font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {bulkSending ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Send Email to Selected
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Contacts Table */}
         <div className="overflow-x-auto">
           {contacts.length === 0 ? (
@@ -485,32 +615,49 @@ export default function CampaignDetailPage() {
             <table className="w-full">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Depth</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Added</th>
+                  <th className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === contacts.length && contacts.length > 0}
+                      onChange={toggleSelectAll}
+                      className="rounded border-border cursor-pointer"
+                    />
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Depth</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Added</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {contacts.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
+                  <tr key={contact.id} className={`hover:bg-muted/30 transition-colors ${selectedIds.has(contact.id) ? "bg-primary/5" : ""}`}>
+                    <td className="px-4 py-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(contact.id)}
+                        onChange={() => toggleSelect(contact.id)}
+                        className="rounded border-border cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-foreground">
                       {contact.name}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {contact.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                        contact.relay_depth === 0 
-                          ? "bg-blue-100 text-blue-700" 
+                        contact.relay_depth === 0
+                          ? "bg-blue-100 text-blue-700"
                           : "bg-purple-100 text-purple-700"
                       }`}>
                         {contact.relay_depth === 0 ? "Initial" : `Level ${contact.relay_depth}`}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
                         sending === contact.id
                           ? "bg-yellow-100 text-yellow-700"
@@ -521,8 +668,26 @@ export default function CampaignDetailPage() {
                         {sending === contact.id ? "Sending..." : contact.email_sent ? "Sent" : "Pending"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-muted-foreground">
                       {new Date(contact.created_at).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={() => handleSendOne(contact)}
+                        disabled={sending === contact.id}
+                        title={contact.email_sent ? "Resend email" : "Send email"}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-primary/30 text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                      >
+                        {sending === contact.id ? (
+                          <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                        {contact.email_sent ? "Resend" : "Send Email"}
+                      </button>
                     </td>
                   </tr>
                 ))}
