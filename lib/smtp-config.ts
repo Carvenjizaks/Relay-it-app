@@ -1,10 +1,7 @@
-// SMTP.com configuration
-// Uses env vars if set, otherwise falls back to defaults
+// SMTP.com configuration - hardcoded to avoid env var issues
 export const smtpConfig = {
-  apiKey: process.env.SMTP_API_KEY || "3e9b0f146f3f71295f4d3022a4759d8078e4e475",
-  channel: process.env.SMTP_CHANNEL !== "qamfaj-Hatku2-ciqpux" 
-    ? (process.env.SMTP_CHANNEL || "RelayApp_Channel") 
-    : "RelayApp_Channel",
-  senderEmail: process.env.SMTP_SENDER_EMAIL || "nexiumbi@gmail.com",
-  senderName: process.env.SMTP_SENDER_NAME || "Relay-it",
+  apiKey: "3e9b0f146f3f71295f4d3022a4759d8078e4e475",
+  channel: "RelayApp_Channel",
+  senderEmail: "nexiumbi@gmail.com",
+  senderName: "Relay-it",
 }
