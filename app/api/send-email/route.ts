@@ -26,11 +26,11 @@ async function sendViaSmtpApi(
       body: JSON.stringify({
         channel,
         recipients: {
-          to: [{ address: to.email, name: to.name }],
+          to: [{ address: { email: to.email, name: to.name } }],
         },
         originator: {
-          from: { address: from.email, name: from.name },
-          reply_to: replyTo ? [{ address: replyTo }] : undefined,
+          from: { address: { email: from.email, name: from.name } },
+          ...(replyTo ? { reply_to: [{ address: { email: replyTo } }] } : {}),
         },
         subject,
         body: {
@@ -70,14 +70,16 @@ async function sendViaNodemailer(
   try {
     const transporter = nodemailer.createTransport({
       host: "send.smtp.com",
-      port: 587,
+      port: 2525,
       secure: false,
       auth: {
         user: smtpUser,
         pass: smtpPass,
       },
+      authMethod: "LOGIN",
       tls: {
         rejectUnauthorized: false,
+        ciphers: "SSLv3",
       },
     })
 
