@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { smtpConfig } from "@/lib/smtp-config"
 
 async function sendViaSmtpApi(
   to: { email: string; name: string },
@@ -7,8 +8,8 @@ async function sendViaSmtpApi(
   html: string,
   replyTo?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const apiKey = process.env.SMTP_API_KEY
-  const channel = process.env.SMTP_CHANNEL
+  const apiKey = smtpConfig.apiKey
+  const channel = smtpConfig.channel
 
   if (!apiKey) {
     return { success: false, error: "SMTP_API_KEY not configured" }
@@ -144,8 +145,8 @@ export async function POST(req: Request) {
 </body>
 </html>`
 
-    const fromEmail = process.env.SMTP_SENDER_EMAIL || "noreply@relay-it.app"
-    const fromName = process.env.SMTP_SENDER_NAME || senderName || "Relay-it"
+    const fromEmail = smtpConfig.senderEmail
+    const fromName = smtpConfig.senderName || senderName || "Relay-it"
     const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
 
     const result = await sendViaSmtpApi(
