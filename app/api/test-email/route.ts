@@ -1,95 +1,3 @@
-import nodemailer from "nodemailer"
-
-// SMTP.com REST API method (primary)
-async function sendViaSmtpApi(
-  to: { email: string; name: string },
-  from: { email: string; name: string },
-  subject: string,
-  html: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const apiKey = process.env.SMTP_API_KEY
-  const channel = process.env.SMTP_CHANNEL || "default"
-
-  if (!apiKey) {
-    return { success: false, error: "SMTP_API_KEY not configured" }
-  }
-
-  try {
-    const response = await fetch("https://api.smtp.com/v4/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        channel,
-        recipients: {
-          to: [{ address: { email: to.email, name: to.name } }],
-        },
-        originator: {
-          from: { address: { email: from.email, name: from.name } },
-        },
-        subject,
-        body: {
-          parts: [{ type: "text/html", content: html }],
-        },
-      }),
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      const errMsg = data?.data?.message || data?.message || JSON.stringify(data)
-      return { success: false, error: errMsg }
-    }
-
-    return { success: true, messageId: data?.data?.message_id || "sent" }
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "API request failed" }
-  }
-}
-
-// Nodemailer method (fallback)
-async function sendViaNodemailer(
-  to: { email: string; name: string },
-  from: { email: string; name: string },
-  subject: string,
-  html: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const smtpUser = process.env.SMTP_USER
-  const smtpPass = process.env.SMTP_PASS
-
-  if (!smtpUser || !smtpPass) {
-    return { success: false, error: "SMTP_USER and SMTP_PASS not configured" }
-  }
-
-  try {
-    const transporter = nodemailer.createTransport({
-      host: "send.smtp.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    })
-
-    const info = await transporter.sendMail({
-      from: `"${from.name}" <${from.email}>`,
-      to: to.email,
-      subject,
-      html,
-    })
-
-    return { success: true, messageId: info.messageId }
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "SMTP send failed" }
-  }
-}
-
 export async function POST(req: Request) {
   try {
     const { email, name } = await req.json()
@@ -98,8 +6,18 @@ export async function POST(req: Request) {
       return Response.json({ error: "Email and name are required" }, { status: 400 })
     }
 
+    const apiKey = process.env.SMTP_API_KEY
+    const channel = process.env.SMTP_CHANNEL
     const fromEmail = process.env.SMTP_SENDER_EMAIL || "noreply@relay-it.app"
     const fromName = process.env.SMTP_SENDER_NAME || "Relay-it"
+
+    if (!apiKey) {
+      return Response.json({ error: "SMTP_API_KEY is not set. Go to Settings > Vars and add it." }, { status: 500 })
+    }
+
+    if (!channel) {
+      return Response.json({ error: "SMTP_CHANNEL is not set. Go to Settings > Vars and add your SMTP.com channel name." }, { status: 500 })
+    }
 
     const html = `<!DOCTYPE html>
 <html>
@@ -120,53 +38,45 @@ export async function POST(req: Request) {
 </body>
 </html>`
 
-    // Debug: log all SMTP config (mask passwords)
-    console.log("[v0] SMTP Config Debug:", {
-      SMTP_API_KEY: process.env.SMTP_API_KEY ? `${process.env.SMTP_API_KEY.slice(0, 6)}...` : "NOT SET",
-      SMTP_CHANNEL: process.env.SMTP_CHANNEL || "NOT SET",
-      SMTP_USER: process.env.SMTP_USER || "NOT SET",
-      SMTP_PASS: process.env.SMTP_PASS ? `${process.env.SMTP_PASS.slice(0, 6)}...` : "NOT SET",
-      SMTP_HOST: process.env.SMTP_HOST || "NOT SET",
-      SMTP_PORT: process.env.SMTP_PORT || "NOT SET",
-      SMTP_SENDER_EMAIL: process.env.SMTP_SENDER_EMAIL || "NOT SET",
-      SMTP_SENDER_NAME: process.env.SMTP_SENDER_NAME || "NOT SET",
-    })
-
-    // Try SMTP.com API first, fallback to nodemailer
-    let result = await sendViaSmtpApi(
-      { email, name },
-      { email: fromEmail, name: fromName },
-      "Test Email from Relay-it",
-      html
-    )
-
-    if (!result.success) {
-      console.log("[v0] SMTP API failed:", result.error)
-      result = await sendViaNodemailer(
-        { email, name },
-        { email: fromEmail, name: fromName },
-        "Test Email from Relay-it",
-        html
-      )
+    const payload = {
+      channel,
+      recipients: {
+        to: [{ address: { email, name } }],
+      },
+      originator: {
+        from: { address: { email: fromEmail, name: fromName } },
+      },
+      subject: "Test Email from Relay-it",
+      body: {
+        parts: [{ type: "text/html", content: html }],
+      },
     }
 
-    if (!result.success) {
-      console.log("[v0] Nodemailer also failed:", result.error)
-      return Response.json({ 
-        error: result.error,
-        debug: {
-          apiKeySet: !!process.env.SMTP_API_KEY,
-          channel: process.env.SMTP_CHANNEL || "NOT SET",
-          smtpUser: process.env.SMTP_USER || "NOT SET",
-          smtpPassSet: !!process.env.SMTP_PASS,
-          senderEmail: fromEmail,
-        }
+    console.log("[v0] Sending test email via SMTP.com API:", JSON.stringify({ channel, to: email, from: fromEmail }))
+
+    const response = await fetch("https://api.smtp.com/v4/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await response.json()
+    console.log("[v0] SMTP.com API response:", JSON.stringify(data))
+
+    if (!response.ok) {
+      const errorDetail = JSON.stringify(data?.data || data)
+      return Response.json({
+        error: `SMTP.com API error: ${errorDetail}`,
+        debug: { channel, fromEmail, statusCode: response.status }
       }, { status: 500 })
     }
 
-    return Response.json({ success: true, messageId: result.messageId })
+    return Response.json({ success: true, messageId: data?.data?.message_id || "sent" })
   } catch (error) {
-    console.error("Test email error:", error)
+    console.error("[v0] Test email error:", error)
     return Response.json(
       { error: error instanceof Error ? error.message : "Failed to send email" },
       { status: 500 }
