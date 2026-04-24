@@ -8,6 +8,21 @@ export default function TestEmailPage() {
   const [name, setName] = useState("")
   const [sending, setSending] = useState(false)
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [diagnosing, setDiagnosing] = useState(false)
+  const [diagResult, setDiagResult] = useState<string | null>(null)
+
+  async function testSmtpConfig() {
+    setDiagnosing(true)
+    setDiagResult(null)
+    try {
+      const res = await fetch("/api/test-smtp-config")
+      const data = await res.json()
+      setDiagResult(JSON.stringify(data, null, 2))
+    } catch (err) {
+      setDiagResult("Failed to reach diagnostic endpoint")
+    }
+    setDiagnosing(false)
+  }
 
   async function sendTestEmail() {
     if (!email || !name) {
@@ -102,19 +117,24 @@ export default function TestEmailPage() {
         )}
       </div>
 
-      <div className="mt-6 p-4 bg-muted rounded-lg">
-        <h3 className="font-medium text-foreground mb-2">SMTP Configuration Check</h3>
+      <div className="mt-6 bg-card border border-border rounded-xl p-6 shadow-sm space-y-4">
+        <h3 className="font-medium text-foreground">SMTP Diagnostic</h3>
         <p className="text-sm text-muted-foreground">
-          Make sure these environment variables are set in your Vercel project:
+          Click below to check your SMTP.com API key and channel configuration.
         </p>
-        <ul className="mt-2 text-sm text-muted-foreground list-disc list-inside space-y-1">
-          <li>SMTP_HOST</li>
-          <li>SMTP_PORT</li>
-          <li>SMTP_USER</li>
-          <li>SMTP_PASS</li>
-          <li>SMTP_FROM_EMAIL</li>
-          <li>SMTP_FROM_NAME (optional)</li>
-        </ul>
+        <button
+          type="button"
+          onClick={testSmtpConfig}
+          disabled={diagnosing}
+          className="px-6 py-3 bg-muted text-foreground rounded-lg font-medium hover:bg-muted/80 disabled:opacity-50 transition-colors border border-border"
+        >
+          {diagnosing ? "Checking..." : "Run SMTP Diagnostic"}
+        </button>
+        {diagResult && (
+          <pre className="mt-2 p-4 bg-background border border-border rounded-lg text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
+            {diagResult}
+          </pre>
+        )}
       </div>
     </div>
   )
