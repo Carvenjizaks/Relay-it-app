@@ -1,3 +1,5 @@
+import { smtpConfig } from "@/lib/smtp-config"
+
 export async function POST(req: Request) {
   try {
     const { email, name } = await req.json()
@@ -6,17 +8,17 @@ export async function POST(req: Request) {
       return Response.json({ error: "Email and name are required" }, { status: 400 })
     }
 
-    const apiKey = process.env.SMTP_API_KEY
-    const channel = process.env.SMTP_CHANNEL
-    const fromEmail = process.env.SMTP_SENDER_EMAIL || "noreply@relay-it.app"
-    const fromName = process.env.SMTP_SENDER_NAME || "Relay-it"
+    const apiKey = smtpConfig.apiKey
+    const channel = smtpConfig.channel
+    const fromEmail = smtpConfig.senderEmail
+    const fromName = smtpConfig.senderName
 
     if (!apiKey) {
-      return Response.json({ error: "SMTP_API_KEY is not set. Go to Settings > Vars and add it." }, { status: 500 })
+      return Response.json({ error: "SMTP_API_KEY is not set." }, { status: 500 })
     }
 
     if (!channel) {
-      return Response.json({ error: "SMTP_CHANNEL is not set. Go to Settings > Vars and add your SMTP.com channel name." }, { status: 500 })
+      return Response.json({ error: "SMTP_CHANNEL is not set." }, { status: 500 })
     }
 
     const html = `<!DOCTYPE html>
