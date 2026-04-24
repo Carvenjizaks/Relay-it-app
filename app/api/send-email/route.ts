@@ -60,11 +60,11 @@ async function sendViaNodemailer(
   html: string,
   replyTo?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const smtpUser = process.env.SMTP_USERNAME
-  const smtpPass = process.env.SMTP_PASSWORD
+  const smtpUser = process.env.SMTP_USER
+  const smtpPass = process.env.SMTP_PASS
 
   if (!smtpUser || !smtpPass) {
-    return { success: false, error: "SMTP_USERNAME and SMTP_PASSWORD not configured" }
+    return { success: false, error: "SMTP_USER and SMTP_PASS not configured" }
   }
 
   try {
