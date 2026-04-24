@@ -120,6 +120,18 @@ export async function POST(req: Request) {
 </body>
 </html>`
 
+    // Debug: log all SMTP config (mask passwords)
+    console.log("[v0] SMTP Config Debug:", {
+      SMTP_API_KEY: process.env.SMTP_API_KEY ? `${process.env.SMTP_API_KEY.slice(0, 6)}...` : "NOT SET",
+      SMTP_CHANNEL: process.env.SMTP_CHANNEL || "NOT SET",
+      SMTP_USER: process.env.SMTP_USER || "NOT SET",
+      SMTP_PASS: process.env.SMTP_PASS ? `${process.env.SMTP_PASS.slice(0, 6)}...` : "NOT SET",
+      SMTP_HOST: process.env.SMTP_HOST || "NOT SET",
+      SMTP_PORT: process.env.SMTP_PORT || "NOT SET",
+      SMTP_SENDER_EMAIL: process.env.SMTP_SENDER_EMAIL || "NOT SET",
+      SMTP_SENDER_NAME: process.env.SMTP_SENDER_NAME || "NOT SET",
+    })
+
     // Try SMTP.com API first, fallback to nodemailer
     let result = await sendViaSmtpApi(
       { email, name },
@@ -129,7 +141,7 @@ export async function POST(req: Request) {
     )
 
     if (!result.success) {
-      console.log("SMTP API failed, trying nodemailer fallback:", result.error)
+      console.log("[v0] SMTP API failed:", result.error)
       result = await sendViaNodemailer(
         { email, name },
         { email: fromEmail, name: fromName },
@@ -139,9 +151,16 @@ export async function POST(req: Request) {
     }
 
     if (!result.success) {
+      console.log("[v0] Nodemailer also failed:", result.error)
       return Response.json({ 
         error: result.error,
-        hint: "Please set SMTP_API_KEY (preferred) or SMTP_USERNAME + SMTP_PASSWORD in your environment variables."
+        debug: {
+          apiKeySet: !!process.env.SMTP_API_KEY,
+          channel: process.env.SMTP_CHANNEL || "NOT SET",
+          smtpUser: process.env.SMTP_USER || "NOT SET",
+          smtpPassSet: !!process.env.SMTP_PASS,
+          senderEmail: fromEmail,
+        }
       }, { status: 500 })
     }
 
