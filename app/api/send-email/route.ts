@@ -1,6 +1,100 @@
 import nodemailer from "nodemailer"
 import { createClient } from "@/lib/supabase/server"
 
+// SMTP.com REST API method (primary)
+async function sendViaSmtpApi(
+  to: { email: string; name: string },
+  from: { email: string; name: string },
+  subject: string,
+  html: string,
+  replyTo?: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const apiKey = process.env.SMTP_API_KEY
+  const channel = process.env.SMTP_CHANNEL || "default"
+
+  if (!apiKey) {
+    return { success: false, error: "SMTP_API_KEY not configured" }
+  }
+
+  try {
+    const response = await fetch("https://api.smtp.com/v4/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        channel,
+        recipients: {
+          to: [{ address: to.email, name: to.name }],
+        },
+        originator: {
+          from: { address: from.email, name: from.name },
+          reply_to: replyTo ? [{ address: replyTo }] : undefined,
+        },
+        subject,
+        body: {
+          parts: [{ type: "text/html", content: html }],
+        },
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      const errMsg = data?.data?.message || data?.message || JSON.stringify(data)
+      return { success: false, error: errMsg }
+    }
+
+    return { success: true, messageId: data?.data?.message_id || "sent" }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "API request failed" }
+  }
+}
+
+// Nodemailer method (fallback)
+async function sendViaNodemailer(
+  to: { email: string; name: string },
+  from: { email: string; name: string },
+  subject: string,
+  html: string,
+  replyTo?: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const smtpUser = process.env.SMTP_USERNAME
+  const smtpPass = process.env.SMTP_PASSWORD
+
+  if (!smtpUser || !smtpPass) {
+    return { success: false, error: "SMTP_USERNAME and SMTP_PASSWORD not configured" }
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "send.smtp.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    })
+
+    const info = await transporter.sendMail({
+      from: `"${from.name}" <${from.email}>`,
+      to: to.email,
+      subject,
+      html,
+      replyTo,
+    })
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "SMTP send failed" }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -87,45 +181,33 @@ export async function POST(req: Request) {
 </html>
 `
 
-    // SMTP config
-    const smtpHost = process.env.SMTP_HOST || "send.smtp.com"
-    const smtpPort = parseInt(process.env.SMTP_PORT || "2525")
-    const smtpUser = process.env.SMTP_USER
-    const smtpPass = process.env.SMTP_PASS
-    const fromEmail = process.env.SMTP_FROM_EMAIL || smtpUser
-    const fromName = process.env.SMTP_FROM_NAME || senderName || "Relay-it"
+    const fromEmail = process.env.SMTP_SENDER_EMAIL || "noreply@relay-it.app"
+    const fromName = process.env.SMTP_SENDER_NAME || senderName || "Relay-it"
+    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
 
-    if (!smtpUser || !smtpPass) {
-      return Response.json(
-        { error: "SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS." },
-        { status: 500 }
+    // Try SMTP.com API first, fallback to nodemailer
+    let result = await sendViaSmtpApi(
+      { email: recipientEmail, name: recipientName },
+      { email: fromEmail, name: fromName },
+      finalSubject,
+      fullHtml,
+      senderEmail
+    )
+
+    if (!result.success) {
+      console.log("SMTP API failed, trying nodemailer fallback:", result.error)
+      result = await sendViaNodemailer(
+        { email: recipientEmail, name: recipientName },
+        { email: fromEmail, name: fromName },
+        finalSubject,
+        fullHtml,
+        senderEmail
       )
     }
 
-    // Configure nodemailer with AUTH LOGIN for SMTP.com
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        type: "login",
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      tls: {
-        rejectUnauthorized: false,
-      },
-    })
-
-    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
-
-    const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: recipientEmail,
-      subject: finalSubject,
-      html: fullHtml,
-      replyTo: senderEmail,
-    })
+    if (!result.success) {
+      return Response.json({ error: result.error }, { status: 500 })
+    }
 
     // Mark contact as email sent
     if (contactId) {
@@ -135,18 +217,12 @@ export async function POST(req: Request) {
         .eq("id", contactId)
     }
 
-    return Response.json({ success: true, messageId: info.messageId })
+    return Response.json({ success: true, messageId: result.messageId })
   } catch (error) {
     console.error("Error sending email:", error)
-    const message = error instanceof Error ? error.message : "Failed to send email"
-    
-    let friendlyMessage = message
-    if (message.includes("535") || message.includes("Invalid login")) {
-      friendlyMessage = "SMTP authentication failed. Please check your SMTP_USER and SMTP_PASS credentials."
-    } else if (message.includes("ECONNREFUSED") || message.includes("ETIMEDOUT")) {
-      friendlyMessage = "Cannot connect to SMTP server. Try changing SMTP_PORT to 2525, 587, or 465."
-    }
-
-    return Response.json({ error: friendlyMessage }, { status: 500 })
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to send email" },
+      { status: 500 }
+    )
   }
 }
