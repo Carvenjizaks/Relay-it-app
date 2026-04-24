@@ -1,5 +1,95 @@
 import nodemailer from "nodemailer"
 
+// SMTP.com REST API method (primary)
+async function sendViaSmtpApi(
+  to: { email: string; name: string },
+  from: { email: string; name: string },
+  subject: string,
+  html: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const apiKey = process.env.SMTP_API_KEY
+  const channel = process.env.SMTP_CHANNEL || "default"
+
+  if (!apiKey) {
+    return { success: false, error: "SMTP_API_KEY not configured" }
+  }
+
+  try {
+    const response = await fetch("https://api.smtp.com/v4/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        channel,
+        recipients: {
+          to: [{ address: to.email, name: to.name }],
+        },
+        originator: {
+          from: { address: from.email, name: from.name },
+        },
+        subject,
+        body: {
+          parts: [{ type: "text/html", content: html }],
+        },
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      const errMsg = data?.data?.message || data?.message || JSON.stringify(data)
+      return { success: false, error: errMsg }
+    }
+
+    return { success: true, messageId: data?.data?.message_id || "sent" }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "API request failed" }
+  }
+}
+
+// Nodemailer method (fallback)
+async function sendViaNodemailer(
+  to: { email: string; name: string },
+  from: { email: string; name: string },
+  subject: string,
+  html: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const smtpUser = process.env.SMTP_USERNAME
+  const smtpPass = process.env.SMTP_PASSWORD
+
+  if (!smtpUser || !smtpPass) {
+    return { success: false, error: "SMTP_USERNAME and SMTP_PASSWORD not configured" }
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: "send.smtp.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    })
+
+    const info = await transporter.sendMail({
+      from: `"${from.name}" <${from.email}>`,
+      to: to.email,
+      subject,
+      html,
+    })
+
+    return { success: true, messageId: info.messageId }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "SMTP send failed" }
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { email, name } = await req.json()
@@ -8,38 +98,8 @@ export async function POST(req: Request) {
       return Response.json({ error: "Email and name are required" }, { status: 400 })
     }
 
-    const smtpHost = process.env.SMTP_HOST || "send.smtp.com"
-    const smtpPort = parseInt(process.env.SMTP_PORT || "2525")
-    const smtpUser = process.env.SMTP_USER
-    const smtpPass = process.env.SMTP_PASS
-    const fromEmail = process.env.SMTP_FROM_EMAIL || smtpUser
-    const fromName = process.env.SMTP_FROM_NAME || "Relay-it"
-
-    if (!smtpUser || !smtpPass) {
-      return Response.json({
-        error: "SMTP credentials not configured. Please set SMTP_USER and SMTP_PASS."
-      }, { status: 500 })
-    }
-
-    console.log("[v0] SMTP Config:", { host: smtpHost, port: smtpPort, user: smtpUser, fromEmail })
-
-    // Configure nodemailer for SMTP.com
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-      authMethod: "LOGIN",
-      tls: {
-        rejectUnauthorized: false,
-        ciphers: "SSLv3",
-      },
-      debug: true,
-      logger: true,
-    })
+    const fromEmail = process.env.SMTP_SENDER_EMAIL || "noreply@relay-it.app"
+    const fromName = process.env.SMTP_SENDER_NAME || "Relay-it"
 
     const html = `<!DOCTYPE html>
 <html>
@@ -60,29 +120,37 @@ export async function POST(req: Request) {
 </body>
 </html>`
 
-    const info = await transporter.sendMail({
-      from: `"${fromName}" <${fromEmail}>`,
-      to: email,
-      subject: "Test Email from Relay-it",
-      html,
-    })
+    // Try SMTP.com API first, fallback to nodemailer
+    let result = await sendViaSmtpApi(
+      { email, name },
+      { email: fromEmail, name: fromName },
+      "Test Email from Relay-it",
+      html
+    )
 
-    return Response.json({ success: true, messageId: info.messageId })
+    if (!result.success) {
+      console.log("SMTP API failed, trying nodemailer fallback:", result.error)
+      result = await sendViaNodemailer(
+        { email, name },
+        { email: fromEmail, name: fromName },
+        "Test Email from Relay-it",
+        html
+      )
+    }
+
+    if (!result.success) {
+      return Response.json({ 
+        error: result.error,
+        hint: "Please set SMTP_API_KEY (preferred) or SMTP_USERNAME + SMTP_PASSWORD in your environment variables."
+      }, { status: 500 })
+    }
+
+    return Response.json({ success: true, messageId: result.messageId })
   } catch (error) {
-    console.error("[v0] Test email error:", error)
-    const message = error instanceof Error ? error.message : "Failed to send email"
-    const fullError = error instanceof Error ? error.stack : String(error)
-    console.error("[v0] Full error:", fullError)
-    
-    // Return the actual error for debugging
-    return Response.json({ 
-      error: message,
-      debug: {
-        host: process.env.SMTP_HOST,
-        port: process.env.SMTP_PORT,
-        user: process.env.SMTP_USER,
-        from: process.env.SMTP_FROM_EMAIL,
-      }
-    }, { status: 500 })
+    console.error("Test email error:", error)
+    return Response.json(
+      { error: error instanceof Error ? error.message : "Failed to send email" },
+      { status: 500 }
+    )
   }
 }
