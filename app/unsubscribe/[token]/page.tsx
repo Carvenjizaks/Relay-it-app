@@ -11,14 +11,22 @@ export default async function UnsubscribePage({
   const supabase = await createClient()
 
   // Find the contact by their ID (used as token for unsubscribe links)
-  const { data: contact } = await supabase
+  const { data: contactData } = await supabase
     .from("contacts")
     .select("id, name, email, unsubscribed, campaign:campaigns!contacts_campaign_id_fkey(title)")
     .eq("id", token)
     .single()
 
-  if (!contact) {
+  if (!contactData) {
     notFound()
+  }
+
+  // Transform campaign array to single object
+  const contact = {
+    ...contactData,
+    campaign: Array.isArray(contactData.campaign) && contactData.campaign.length > 0 
+      ? contactData.campaign[0] 
+      : null
   }
 
   return <UnsubscribeClient contact={contact} token={token} />
