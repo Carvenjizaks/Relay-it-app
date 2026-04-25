@@ -1,64 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { smtpConfig } from "@/lib/smtp-config"
-
-async function sendViaSmtpApi(
-  to: { email: string; name: string },
-  from: { email: string; name: string },
-  subject: string,
-  html: string,
-  replyTo?: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const apiKey = smtpConfig.apiKey
-  const channel = smtpConfig.channel
-
-  if (!apiKey) {
-    return { success: false, error: "SMTP_API_KEY not configured" }
-  }
-
-  if (!channel) {
-    return { success: false, error: "SMTP_CHANNEL not configured" }
-  }
-
-  const payload: Record<string, unknown> = {
-    channel,
-    recipients: {
-      to: [{ address: { email: to.email, name: to.name } }],
-    },
-    originator: {
-      from: { address: { email: from.email, name: from.name } },
-    },
-    subject,
-    body: {
-      parts: [{ type: "text/html", content: html }],
-    },
-  }
-
-  // Only add reply_to if provided and valid
-  if (replyTo && replyTo.includes("@")) {
-    (payload.originator as Record<string, unknown>).reply_to = [{ address: { email: replyTo } }]
-  }
-
-  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ channel, to: to.email, from: from.email }))
-
-  const response = await fetch("https://api.smtp.com/v4/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  })
-
-  const data = await response.json()
-  console.log("[v0] SMTP.com API response:", JSON.stringify(data))
-
-  if (!response.ok) {
-    const errMsg = JSON.stringify(data?.data || data)
-    return { success: false, error: errMsg }
-  }
-
-  return { success: true, messageId: data?.data?.message_id || "sent" }
-}
+import { sendEmail } from "@/lib/smtp"
 
 export async function POST(req: Request) {
   try {
@@ -90,7 +31,7 @@ export async function POST(req: Request) {
     }
 
     // Build URLs
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://v0-relay-it.vercel.app"
     const relayPageUrl = `${baseUrl}/relay/${relayToken}`
     const unsubscribeUrl = `${baseUrl}/unsubscribe/${contactId || relayToken}`
 
@@ -145,17 +86,17 @@ export async function POST(req: Request) {
 </body>
 </html>`
 
-    const fromEmail = smtpConfig.senderEmail
-    const fromName = smtpConfig.senderName || senderName || "Relay-it"
+    const fromEmail = "TheFatherhoodFoundation.email@smtp.com"
+    const fromName = senderName || "Relay-it"
     const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
 
-    const result = await sendViaSmtpApi(
-      { email: recipientEmail, name: recipientName },
-      { email: fromEmail, name: fromName },
-      finalSubject,
-      fullHtml,
-      senderEmail
-    )
+    const result = await sendEmail({
+      to: recipientEmail,
+      from: { email: fromEmail, name: fromName },
+      subject: finalSubject,
+      html: fullHtml,
+      replyTo: senderEmail,
+    })
 
     if (!result.success) {
       return Response.json({ error: result.error }, { status: 500 })

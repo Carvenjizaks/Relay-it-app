@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      background: #1a1a1a;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .poster {
+      width: 1200px;
+      height: 630px;
+      background: linear-gradient(135deg, #1a365d 0%, #2d3748 50%, #1a202c 100%);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 60px;
+    }
+    .poster::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(214, 158, 46, 0.15) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(26, 54, 93, 0.3) 0%, transparent 50%);
+    }
+    .texture {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+    .content {
+      position: relative;
+      z-index: 2;
+    }
+    .logo {
+      position: absolute;
+      top: 40px;
+      right: 60px;
+      color: rgba(247, 250, 252, 0.6);
+      font-size: 14px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .headline {
+      color: #f7fafc;
+      font-size: 72px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .headline span {
+      color: #d69e2e;
+    }
+    .subhead {
+      color: rgba(247, 250, 252, 0.9);
+      font-size: 28px;
+      font-weight: 400;
+      margin-bottom: 40px;
+      letter-spacing: 1px;
+    }
+    .details {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+    }
+    .date-block {
+      background: #d69e2e;
+      color: #1a202c;
+      padding: 20px 35px;
+      font-size: 24px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .cta {
+      color: #f7fafc;
+      font-size: 20px;
+      border: 2px solid rgba(247, 250, 252, 0.4);
+      padding: 18px 35px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      font-weight: 600;
+    }
+    .accent-line {
+      position: absolute;
+      left: 60px;
+      top: 60px;
+      width: 80px;
+      height: 4px;
+      background: #d69e2e;
+    }
+  </style>
+</head>
+<body>
+  <div class="poster">
+    <div class="texture"></div>
+    <div class="accent-line"></div>
+    <div class="logo">The Fatherhood Foundation</div>
+    <div class="content">
+      <h1 class="headline">Table Talk<br><span>for Men</span></h1>
+      <p class="subhead">Real conversations. Real brotherhood.</p>
+      <div class="details">
+        <div class="date-block">This Saturday</div>
+        <div class="cta">Join Us →</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

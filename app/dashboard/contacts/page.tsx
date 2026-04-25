@@ -278,7 +278,8 @@ export default function ContactsPage() {
     })
 
     if (error) {
-      showStatus("error", error.code === "23505" ? "This email already exists." : error.message)
+      console.error("[Add Contact Error]", error)
+      showStatus("error", error.code === "23505" ? "This email already exists." : `Error: ${error.message} (Code: ${error.code})`)
     } else {
       fetchContacts()
       if (selectedList) {
