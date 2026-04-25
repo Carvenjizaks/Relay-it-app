@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
 import Link from "next/link"
 import { CopyButton } from "@/components/copy-button"
 
@@ -6,9 +7,14 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Redirect to login if not authenticated
+  if (!user) {
+    redirect("/auth/login")
+  }
+
   // Optimized: fetch profile and campaigns in parallel with minimal fields
   const [{ data: profile }, { data: campaigns }] = await Promise.all([
-    supabase.from("profiles").select("full_name, referral_code, role").eq("id", user!.id).single(),
+    supabase.from("profiles").select("full_name, referral_code, role").eq("id", user.id).single(),
     supabase.from("campaigns").select("id, title, status, created_at").order("created_at", { ascending: false }).limit(5),
   ])
 
