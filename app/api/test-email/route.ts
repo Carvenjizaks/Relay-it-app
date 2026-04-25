@@ -9,16 +9,11 @@ export async function POST(req: Request) {
     }
 
     const apiKey = smtpConfig.apiKey
-    const channel = smtpConfig.channel
     const fromEmail = smtpConfig.senderEmail
     const fromName = smtpConfig.senderName
 
     if (!apiKey) {
       return Response.json({ error: "SMTP_API_KEY is not set." }, { status: 500 })
-    }
-
-    if (!channel) {
-      return Response.json({ error: "SMTP_CHANNEL is not set." }, { status: 500 })
     }
 
     const html = `<!DOCTYPE html>
@@ -41,7 +36,6 @@ export async function POST(req: Request) {
 </html>`
 
     const payload = {
-      channel,
       recipients: {
         to: [{ address: { email, name } }],
       },
@@ -54,7 +48,7 @@ export async function POST(req: Request) {
       },
     }
 
-    console.log("[v0] Sending test email via SMTP.com API:", JSON.stringify({ channel, to: email, from: fromEmail }))
+    console.log("[v0] Sending test email via SMTP.com API:", JSON.stringify({ to: email, from: fromEmail }))
 
     const response = await fetch("https://api.smtp.com/v4/messages", {
       method: "POST",
@@ -72,7 +66,7 @@ export async function POST(req: Request) {
       const errorDetail = JSON.stringify(data?.data || data)
       return Response.json({
         error: `SMTP.com API error: ${errorDetail}`,
-        debug: { channel, fromEmail, statusCode: response.status }
+        debug: { fromEmail, statusCode: response.status }
       }, { status: 500 })
     }
 
