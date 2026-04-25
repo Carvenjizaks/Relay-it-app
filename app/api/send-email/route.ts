@@ -38,7 +38,13 @@ async function sendViaSmtpApi(
     (payload.originator as Record<string, unknown>).reply_to = [{ address: { email: replyTo } }]
   }
 
-  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ channel, to: to.email, from: from.email }))
+  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ 
+    channel, 
+    to: to.email, 
+    from: from.email,
+    apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + "..." : "EMPTY",
+    apiKeyLength: apiKey?.length || 0
+  }))
 
   const response = await fetch("https://api.smtp.com/v4/messages", {
     method: "POST",
