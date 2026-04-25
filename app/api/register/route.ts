@@ -16,6 +16,14 @@ async function getTenantId() {
 // POST /api/register - Register for an event (public endpoint)
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const tenantId = await getTenantId()
     if (!tenantId) {
       return NextResponse.json(

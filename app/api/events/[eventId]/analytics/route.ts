@@ -9,9 +9,16 @@ export async function GET(
   try {
     const { eventId } = await params
 
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     // Get event details
     const { data: event, error: eventError } = await supabaseAdmin
-      ?.from('events')
+      .from('events')
       .select('*')
       .eq('id', eventId)
       .single()
@@ -25,13 +32,13 @@ export async function GET(
 
     // Get registration stats
     const { data: registrations } = await supabaseAdmin
-      ?.from('registrations')
+      .from('registrations')
       .select('status')
       .eq('event_id', eventId)
 
     // Get referral stats
     const { data: referralLinks } = await supabaseAdmin
-      ?.from('referral_links')
+      .from('referral_links')
       .select('click_count, registration_count')
       .eq('event_id', eventId)
 

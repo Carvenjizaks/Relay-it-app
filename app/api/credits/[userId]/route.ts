@@ -7,6 +7,14 @@ export async function GET(
   { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const { userId } = await params
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
@@ -21,10 +29,10 @@ export async function GET(
       .order('created_at', { ascending: false })
 
     if (eventId) {
-      query = query?.eq('event_id', eventId)
+      query = query.eq('event_id', eventId)
     }
 
-    const { data, error } = await query!
+    const { data, error } = await query
 
     if (error) throw error
 

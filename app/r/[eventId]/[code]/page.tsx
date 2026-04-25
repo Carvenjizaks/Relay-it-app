@@ -10,9 +10,13 @@ export default async function ReferralRedirect({
 }) {
   const { eventId, code } = await params
 
+  if (!supabaseAdmin) {
+    redirect('/?error=database_not_configured')
+  }
+
   // Validate the referral link
   const { data: link } = await supabaseAdmin
-    ?.from('referral_links')
+    .from('referral_links')
     .select('id, event_id, is_active, expires_at, max_uses, click_count')
     .eq('code', code.toUpperCase())
     .eq('event_id', eventId)
@@ -36,7 +40,7 @@ export default async function ReferralRedirect({
   }
 
   // Record the click (in background)
-  supabaseAdmin?.from('link_clicks').insert([{
+  supabaseAdmin.from('link_clicks').insert([{
     referral_link_id: link.id,
     device_type: 'unknown'
   }]).then(() => {
@@ -44,7 +48,7 @@ export default async function ReferralRedirect({
     supabaseAdmin?.from('referral_links')
       .update({ click_count: link.click_count + 1 })
       .eq('id', link.id)
-  }).catch(console.error)
+  }, console.error)
 
   // Redirect to registration page with referral code
   redirect(`/register?event=${eventId}&ref=${code}`)

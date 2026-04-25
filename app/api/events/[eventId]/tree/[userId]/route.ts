@@ -10,9 +10,16 @@ export async function GET(
   try {
     const { eventId, userId } = await params
 
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     // Get the user's position in the chain
     const { data: chain } = await supabaseAdmin
-      ?.from('referral_chain')
+      .from('referral_chain')
       .select(`
         *,
         user:users(id, name, email),
@@ -24,7 +31,7 @@ export async function GET(
 
     // Get the root user
     const { data: rootUser } = await supabaseAdmin
-      ?.from('users')
+      .from('users')
       .select('id, name, email')
       .eq('id', userId)
       .single()

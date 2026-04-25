@@ -15,6 +15,13 @@ async function getTenantId() {
 // GET /api/events - List events for tenant
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     const tenantId = await getTenantId()
     if (!tenantId) {
       return NextResponse.json(
@@ -27,7 +34,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
 
     let query = supabaseAdmin
-      ?.from('events')
+      .from('events')
       .select(`
         *,
         registrations:registrations(count),
@@ -38,10 +45,10 @@ export async function GET(request: NextRequest) {
       .order('event_date', { ascending: true })
 
     if (status) {
-      query = query?.eq('status', status)
+      query = query.eq('status', status)
     }
 
-    const { data, error } = await query!
+    const { data, error } = await query
 
     if (error) throw error
 
@@ -58,6 +65,13 @@ export async function GET(request: NextRequest) {
 // POST /api/events - Create new event
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     const tenantId = await getTenantId()
     if (!tenantId) {
       return NextResponse.json(
@@ -90,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { data, error } = await supabaseAdmin
-      ?.from('events')
+      .from('events')
       .insert([{
         tenant_id: tenantId,
         name,

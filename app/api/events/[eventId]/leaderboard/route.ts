@@ -11,9 +11,16 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const limit = parseInt(searchParams.get('limit') || '10')
 
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
     // Get credits for this event
     const { data: credits } = await supabaseAdmin
-      ?.from('credits')
+      .from('credits')
       .select(`
         user_id,
         amount,
@@ -25,11 +32,12 @@ export async function GET(
     const leaderboard = credits?.reduce((acc: any, credit) => {
       const userId = credit.user_id
       if (!acc[userId]) {
+        const userData = Array.isArray(credit.user) ? credit.user[0] : credit.user
         acc[userId] = {
           user_id: userId,
-          name: credit.user?.name,
-          email: credit.user?.email,
-          company: credit.user?.company,
+          name: userData?.name,
+          email: userData?.email,
+          company: userData?.company,
           total_credits: 0
         }
       }

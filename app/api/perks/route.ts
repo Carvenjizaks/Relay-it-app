@@ -5,6 +5,14 @@ import { nanoid } from 'nanoid'
 // GET /api/perks - List perks for event
 export async function GET(request: Request) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
 
@@ -43,6 +51,14 @@ export async function GET(request: Request) {
 // POST /api/perks - Create new perk
 export async function POST(request: Request) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const body = await request.json()
     const {
       event_id,

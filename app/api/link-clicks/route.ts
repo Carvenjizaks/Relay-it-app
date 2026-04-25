@@ -5,6 +5,14 @@ import { createHash } from 'crypto'
 // GET /api/link-clicks - Get click analytics
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const { searchParams } = new URL(request.url)
     const referralLinkId = searchParams.get('referral_link_id')
     const eventId = searchParams.get('event_id')
@@ -19,7 +27,7 @@ export async function GET(request: NextRequest) {
       `)
 
     if (referralLinkId) {
-      query = query?.eq('referral_link_id', referralLinkId)
+      query = query.eq('referral_link_id', referralLinkId)
     }
 
     if (startDate) {
@@ -30,7 +38,7 @@ export async function GET(request: NextRequest) {
       query = query?.lte('clicked_at', endDate)
     }
 
-    const { data, error } = await query!.order('clicked_at', { ascending: false })
+    const { data, error } = await query.order('clicked_at', { ascending: false })
 
     if (error) throw error
 
@@ -58,6 +66,14 @@ export async function GET(request: NextRequest) {
 // POST /api/link-clicks - Record a click
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const body = await request.json()
     const { code, user_agent, referer_url } = body
 

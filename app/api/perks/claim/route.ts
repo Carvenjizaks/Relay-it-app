@@ -5,6 +5,14 @@ import { sendEmail, perkClaimedEmail } from '@/lib/email'
 // POST /api/perks/claim - Claim a perk
 export async function POST(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+
     const body = await request.json()
     const { perk_id, user_id, event_id } = body
 
