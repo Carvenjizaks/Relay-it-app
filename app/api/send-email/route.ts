@@ -9,18 +9,12 @@ async function sendViaSmtpApi(
   replyTo?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const apiKey = smtpConfig.apiKey
-  const channel = smtpConfig.channel
 
   if (!apiKey) {
     return { success: false, error: "SMTP_API_KEY not configured" }
   }
 
-  if (!channel) {
-    return { success: false, error: "SMTP_CHANNEL not configured" }
-  }
-
   const payload: Record<string, unknown> = {
-    channel,
     recipients: {
       to: [{ address: { email: to.email, name: to.name } }],
     },
@@ -38,7 +32,11 @@ async function sendViaSmtpApi(
     (payload.originator as Record<string, unknown>).reply_to = [{ address: { email: replyTo } }]
   }
 
-  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ channel, to: to.email, from: from.email }))
+  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ 
+    to: to.email, 
+    from: from.email,
+    apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + "..." : "EMPTY"
+  }))
 
   const response = await fetch("https://api.smtp.com/v4/messages", {
     method: "POST",
