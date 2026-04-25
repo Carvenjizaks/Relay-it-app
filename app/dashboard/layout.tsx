@@ -16,7 +16,7 @@ export default async function DashboardLayout({
 
   // Single optimized query - get profile and counts in parallel
   const [{ data: profile }, campaignsResult, contactsResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, role, referral_code").eq("id", user.id).single(),
+    supabase.from("profiles").select("id, full_name, role, referral_code, total_referrals, total_credits").eq("id", user.id).single(),
     supabase.from("campaigns").select("id", { count: "exact", head: true }),
     supabase.from("contacts").select("id", { count: "exact", head: true }),
   ])
