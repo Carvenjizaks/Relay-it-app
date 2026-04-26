@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server"
-import { sendEmail } from "@/lib/smtp"
 
 export async function POST(req: Request) {
   try {
@@ -30,87 +29,12 @@ export async function POST(req: Request) {
       return Response.json({ error: "Campaign not found" }, { status: 404 })
     }
 
-    // Build URLs
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://v0-relay-it.vercel.app"
-    const relayPageUrl = `${baseUrl}/relay/${relayToken}`
-    const unsubscribeUrl = `${baseUrl}/unsubscribe/${contactId || relayToken}`
-
-    // Replace placeholders
-    const personalizedContent = htmlContent
-      .replace(/\{\{recipient_name\}\}/g, recipientName)
-      .replace(/\{\{sender_name\}\}/g, senderName)
-
-    const relayMessage = campaign.relay_message || "Know someone who would love this? Share it with them!"
-
-    // Build full email HTML
-    const fullHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.7; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background: #ffffff; }
-    .content { padding: 20px 0; font-size: 16px; }
-    .content h1 { font-size: 28px; font-weight: bold; margin-bottom: 16px; }
-    .content h2 { font-size: 22px; font-weight: bold; margin-bottom: 12px; }
-    .content p { margin-bottom: 16px; }
-    .cta-button { display: inline-block; background: #3b82f6; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; font-family: -apple-system, sans-serif; }
-    .relay-section { background: linear-gradient(to right, #f0f9ff, #e0f2fe, #f0f9ff); padding: 24px; border-radius: 12px; margin-top: 32px; text-align: center; }
-    .relay-logo { font-weight: bold; color: #3b82f6; font-size: 16px; margin-bottom: 8px; font-family: -apple-system, sans-serif; }
-    .relay-message { margin-bottom: 16px; font-size: 15px; }
-    .relay-button { display: inline-block; background: #3b82f6; color: white !important; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: 600; font-size: 14px; font-family: -apple-system, sans-serif; }
-    .footer { padding-top: 24px; margin-top: 32px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; text-align: center; font-family: -apple-system, sans-serif; }
-    .unsubscribe { color: #6b7280; text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div class="content">
-    ${personalizedContent}
-    
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="${eventUrl}" class="cta-button">${campaign.call_to_action || "Learn More"}</a>
-    </div>
-  </div>
-  
-  <div class="relay-section">
-    <div class="relay-logo">Relay-it</div>
-    <p class="relay-message">${relayMessage}</p>
-    <a href="${relayPageUrl}" class="relay-button">Send this to a friend</a>
-  </div>
-  
-  <div class="footer">
-    <p>This email was sent by ${senderName} via Relay-it.</p>
-    <p style="margin-top: 12px;"><a href="${unsubscribeUrl}" class="unsubscribe">Unsubscribe from these emails</a></p>
-  </div>
-</body>
-</html>`
-
-    const fromEmail = "TheFatherhoodFoundation.email@smtp.com"
-    const fromName = senderName || "Relay-it"
-    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
-
-    const result = await sendEmail({
-      to: recipientEmail,
-      from: { email: fromEmail, name: fromName },
-      subject: finalSubject,
-      html: fullHtml,
-      replyTo: senderEmail,
-    })
-
-    if (!result.success) {
-      return Response.json({ error: result.error }, { status: 500 })
-    }
-
-    // Mark contact as email sent
-    if (contactId) {
-      await supabase
-        .from("contacts")
-        .update({ email_sent: true, email_sent_at: new Date().toISOString() })
-        .eq("id", contactId)
-    }
-
-    return Response.json({ success: true, messageId: result.messageId })
+    // Email sending is disabled - SMTP removed
+    // TODO: Implement new email provider
+    return Response.json(
+      { error: "Email sending is currently disabled. Please configure a new email provider." },
+      { status: 503 }
+    )
   } catch (error) {
     console.error("[v0] Error sending email:", error)
     return Response.json(
