@@ -1,62 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { smtpConfig } from "@/lib/smtp-config"
-
-async function sendViaSmtpApi(
-  to: { email: string; name: string },
-  from: { email: string; name: string },
-  subject: string,
-  html: string,
-  replyTo?: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const apiKey = smtpConfig.apiKey
-
-  if (!apiKey) {
-    return { success: false, error: "SMTP_API_KEY not configured" }
-  }
-
-  const payload: Record<string, unknown> = {
-    recipients: {
-      to: [{ address: { email: to.email, name: to.name } }],
-    },
-    originator: {
-      from: { address: { email: from.email, name: from.name } },
-    },
-    subject,
-    body: {
-      parts: [{ type: "text/html", content: html }],
-    },
-  }
-
-  // Only add reply_to if provided and valid
-  if (replyTo && replyTo.includes("@")) {
-    (payload.originator as Record<string, unknown>).reply_to = [{ address: { email: replyTo } }]
-  }
-
-  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ 
-    to: to.email, 
-    from: from.email,
-    apiKeyPrefix: apiKey ? apiKey.substring(0, 8) + "..." : "EMPTY"
-  }))
-
-  const response = await fetch("https://api.smtp.com/v4/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  })
-
-  const data = await response.json()
-  console.log("[v0] SMTP.com API response:", JSON.stringify(data))
-
-  if (!response.ok) {
-    const errMsg = JSON.stringify(data?.data || data)
-    return { success: false, error: errMsg }
-  }
-
-  return { success: true, messageId: data?.data?.message_id || "sent" }
-}
+import { sendViaSmtpApi } from "@/lib/email/smtp"
 
 export async function POST(req: Request) {
   try {
@@ -74,9 +18,12 @@ export async function POST(req: Request) {
       contactId,
     } = body
 
+    if (!campaignId || !recipientEmail || !recipientName || !subject || !htmlContent || !eventUrl || !relayToken) {
+      return Response.json({ error: "Missing required email fields" }, { status: 400 })
+    }
+
     const supabase = await createClient()
 
-    // Get campaign details
     const { data: campaign } = await supabase
       .from("campaigns")
       .select("*")
@@ -87,19 +34,16 @@ export async function POST(req: Request) {
       return Response.json({ error: "Campaign not found" }, { status: 404 })
     }
 
-    // Build URLs
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
     const relayPageUrl = `${baseUrl}/relay/${relayToken}`
     const unsubscribeUrl = `${baseUrl}/unsubscribe/${contactId || relayToken}`
 
-    // Replace placeholders
-    const personalizedContent = htmlContent
+    const personalizedContent = String(htmlContent)
       .replace(/\{\{recipient_name\}\}/g, recipientName)
-      .replace(/\{\{sender_name\}\}/g, senderName)
+      .replace(/\{\{sender_name\}\}/g, senderName || smtpConfig.senderName || "Relay-it")
 
     const relayMessage = campaign.relay_message || "Know someone who would love this? Share it with them!"
 
-    // Build full email HTML
     const fullHtml = `
 <!DOCTYPE html>
 <html>
@@ -124,55 +68,73 @@ export async function POST(req: Request) {
 <body>
   <div class="content">
     ${personalizedContent}
-    
     <div style="text-align: center; margin: 30px 0;">
       <a href="${eventUrl}" class="cta-button">${campaign.call_to_action || "Learn More"}</a>
     </div>
   </div>
-  
   <div class="relay-section">
     <div class="relay-logo">Relay-it</div>
     <p class="relay-message">${relayMessage}</p>
     <a href="${relayPageUrl}" class="relay-button">Send this to a friend</a>
   </div>
-  
   <div class="footer">
-    <p>This email was sent by ${senderName} via Relay-it.</p>
+    <p>This email was sent by ${senderName || smtpConfig.senderName || "Relay-it"} via Relay-it.</p>
     <p style="margin-top: 12px;"><a href="${unsubscribeUrl}" class="unsubscribe">Unsubscribe from these emails</a></p>
   </div>
 </body>
 </html>`
 
-    const fromEmail = smtpConfig.senderEmail
-    const fromName = smtpConfig.senderName || senderName || "Relay-it"
-    const finalSubject = subject.replace(/\{\{recipient_name\}\}/g, recipientName)
+    const finalSubject = String(subject).replace(/\{\{recipient_name\}\}/g, recipientName)
 
-    const result = await sendViaSmtpApi(
-      { email: recipientEmail, name: recipientName },
-      { email: fromEmail, name: fromName },
-      finalSubject,
-      fullHtml,
-      senderEmail
-    )
+    const result = await sendViaSmtpApi({
+      to: { email: recipientEmail, name: recipientName },
+      from: { email: smtpConfig.senderEmail, name: smtpConfig.senderName || senderName || "Relay-it" },
+      subject: finalSubject,
+      html: fullHtml,
+      replyTo: senderEmail,
+    })
 
     if (!result.success) {
+      if (contactId) {
+        await supabase.from("email_logs").insert({
+          campaign_id: campaignId,
+          contact_id: contactId,
+          from_name: senderName || smtpConfig.senderName || "Relay-it",
+          to_email: recipientEmail,
+          to_name: recipientName,
+          subject: finalSubject,
+          status: "failed",
+          error_message: result.error,
+        })
+      }
+
       return Response.json({ error: result.error }, { status: 500 })
     }
 
-    // Mark contact as email sent
     if (contactId) {
       await supabase
         .from("contacts")
         .update({ email_sent: true, email_sent_at: new Date().toISOString() })
         .eq("id", contactId)
+
+      await supabase.from("email_logs").insert({
+        campaign_id: campaignId,
+        contact_id: contactId,
+        from_name: senderName || smtpConfig.senderName || "Relay-it",
+        to_email: recipientEmail,
+        to_name: recipientName,
+        subject: finalSubject,
+        status: "sent",
+        resend_id: result.messageId,
+      })
     }
 
     return Response.json({ success: true, messageId: result.messageId })
   } catch (error) {
-    console.error("[v0] Error sending email:", error)
+    console.error("[Relay-it] Error sending email:", error)
     return Response.json(
       { error: error instanceof Error ? error.message : "Failed to send email" },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
