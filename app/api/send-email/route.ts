@@ -3,37 +3,40 @@ import { emailConfig } from "@/lib/smtp-config"
 import { decrypt } from "@/lib/encryption"
 import nodemailer from "nodemailer"
 
-async function sendViaAgentMail(
+async function sendViaSmtpApi(
   to: string,
+  from: { email: string; name: string },
   subject: string,
   html: string,
   replyTo?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const apiKey = emailConfig.apiKey
-  const inboxId = emailConfig.inboxId
 
   if (!apiKey) {
-    return { success: false, error: "AGENTMAIL_API_KEY not configured" }
-  }
-
-  if (!inboxId) {
-    return { success: false, error: "AGENTMAIL_INBOX_ID not configured" }
+    return { success: false, error: "SMTP_API_KEY not configured" }
   }
 
   const payload: Record<string, unknown> = {
-    to,
+    recipients: {
+      to: [{ address: { email: to, name: to.split("@")[0] } }],
+    },
+    originator: {
+      from: { address: { email: from.email, name: from.name } },
+    },
     subject,
-    html,
+    body: {
+      parts: [{ type: "text/html", content: html }],
+    },
   }
 
   if (replyTo) {
-    payload.reply_to = replyTo
+    (payload.originator as Record<string, unknown>).reply_to = [{ address: { email: replyTo } }]
   }
 
-  console.log("[v0] Sending email via AgentMail:", JSON.stringify({ inboxId, to, subject: subject.substring(0, 50) }))
+  console.log("[v0] Sending email via SMTP.com API:", JSON.stringify({ to, from: from.email, subject: subject.substring(0, 50) }))
 
   try {
-    const response = await fetch(`https://api.agentmail.to/v0/inboxes/${inboxId}/messages/send`, {
+    const response = await fetch("https://api.smtp.com/v4/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -43,7 +46,7 @@ async function sendViaAgentMail(
     })
 
     const data = await response.json()
-    console.log("[v0] AgentMail API response:", JSON.stringify(data))
+    console.log("[v0] SMTP.com API response:", JSON.stringify(data))
 
     if (!response.ok) {
       return { success: false, error: JSON.stringify(data) }
@@ -51,7 +54,7 @@ async function sendViaAgentMail(
 
     return { success: true, messageId: data?.message_id || "sent" }
   } catch (error) {
-    console.error("[v0] AgentMail API error:", error)
+    console.error("[v0] SMTP.com API error:", error)
     return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
 }
@@ -152,7 +155,7 @@ export async function POST(req: Request) {
     // Determine sender display
     const fromName = senderIdentity
       ? `${senderName}`
-      : senderName || emailConfig.senderName || "Relay-it"
+      : senderName || emailConfig.senderName || "Relay-The Message"
     const fromEmail = senderIdentity ? senderIdentity.email : emailConfig.senderEmail
 
     // Build personal-share style email HTML
@@ -234,18 +237,20 @@ export async function POST(req: Request) {
       )
       // If sender SMTP fails, fall back to system
       if (!result.success) {
-        console.warn("[relay] Sender SMTP failed, falling back to AgentMail:", result.error)
-        result = await sendViaAgentMail(
+        console.warn("[relay] Sender SMTP failed, falling back to SMTP.com:", result.error)
+        result = await sendViaSmtpApi(
           recipientEmail,
+          { email: fromEmail, name: fromName },
           finalSubject,
           fullHtml,
           senderEmail
         )
       }
     } else {
-      // System email via AgentMail
-      result = await sendViaAgentMail(
+      // System email via SMTP.com
+      result = await sendViaSmtpApi(
         recipientEmail,
+        { email: fromEmail, name: fromName },
         finalSubject,
         fullHtml,
         senderEmail
@@ -264,7 +269,7 @@ export async function POST(req: Request) {
         .eq("id", contactId)
     }
 
-    return Response.json({ success: true, messageId: result.messageId, sentVia: senderIdentity ? "sender_smtp" : "agentmail" })
+    return Response.json({ success: true, messageId: result.messageId, sentVia: senderIdentity ? "sender_smtp" : "smtp.com" })
   } catch (error) {
     console.error("[relay] Error sending email:", error)
     return Response.json(
