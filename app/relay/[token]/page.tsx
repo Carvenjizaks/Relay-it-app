@@ -37,6 +37,17 @@ export default function RelayPage() {
   const [sent, setSent] = useState(false)
   const [sentCount, setSentCount] = useState(0)
 
+  // Sender identity (SMTP) state
+  const [showSenderIdentity, setShowSenderIdentity] = useState(false)
+  const [senderIdentityLoading, setSenderIdentityLoading] = useState(false)
+  const [senderIdentitySaved, setSenderIdentitySaved] = useState(false)
+  const [smtpHost, setSmtpHost] = useState("")
+  const [smtpPort, setSmtpPort] = useState("587")
+  const [smtpUsername, setSmtpUsername] = useState("")
+  const [smtpPassword, setSmtpPassword] = useState("")
+  const [smtpSecure, setSmtpSecure] = useState(false)
+  const [smtpError, setSmtpError] = useState<string | null>(null)
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -61,6 +72,42 @@ export default function RelayPage() {
 
     setRelayData(data as unknown as RelayData)
     setLoading(false)
+  }
+
+  async function handleSaveSenderIdentity(e: React.FormEvent) {
+    e.preventDefault()
+    if (!relayData) return
+    setSenderIdentityLoading(true)
+    setSmtpError(null)
+
+    try {
+      const response = await fetch("/api/sender-identity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contactId: relayData.contact_id,
+          email: relayData.sender_email,
+          displayName: relayData.sender_name,
+          smtpHost,
+          smtpPort: Number(smtpPort),
+          smtpUsername,
+          smtpPassword,
+          smtpSecure,
+        }),
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to verify email connection")
+      }
+
+      setSenderIdentitySaved(true)
+      setTimeout(() => setShowSenderIdentity(false), 2000)
+    } catch (err) {
+      setSmtpError(err instanceof Error ? err.message : "Failed to connect email")
+    } finally {
+      setSenderIdentityLoading(false)
+    }
   }
 
   async function handleRelay(e: React.FormEvent) {
@@ -245,6 +292,105 @@ export default function RelayPage() {
             </svg>
           </a>
         </div>
+
+        {/* Sender Identity Card */}
+        {senderIdentitySaved ? (
+          <div className="bg-success/10 border border-success/30 rounded-2xl p-4 flex items-center gap-3">
+            <svg className="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            <p className="text-sm text-success font-medium">
+              Emails will be sent from {relayData.sender_email} for a personal touch.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
+            <button
+              onClick={() => setShowSenderIdentity(!showSenderIdentity)}
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              {showSenderIdentity ? "Hide" : "Send from your email for a personal touch"}
+            </button>
+
+            {showSenderIdentity && (
+              <form onSubmit={handleSaveSenderIdentity} className="mt-4 space-y-4">
+                {smtpError && (
+                  <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-sm">
+                    {smtpError}
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Connect your email so the invitation appears to come directly from you. Your credentials are encrypted and only used to send this message.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">SMTP Host</label>
+                    <input
+                      type="text"
+                      value={smtpHost}
+                      onChange={(e) => setSmtpHost(e.target.value)}
+                      required
+                      placeholder="smtp.gmail.com"
+                      className="w-full px-3 py-2 bg-card text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">Port</label>
+                    <input
+                      type="number"
+                      value={smtpPort}
+                      onChange={(e) => setSmtpPort(e.target.value)}
+                      required
+                      placeholder="587"
+                      className="w-full px-3 py-2 bg-card text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">Username</label>
+                    <input
+                      type="text"
+                      value={smtpUsername}
+                      onChange={(e) => setSmtpUsername(e.target.value)}
+                      required
+                      placeholder="your.email@gmail.com"
+                      className="w-full px-3 py-2 bg-card text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">Password / App Password</label>
+                    <input
+                      type="password"
+                      value={smtpPassword}
+                      onChange={(e) => setSmtpPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      className="w-full px-3 py-2 bg-card text-foreground border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={smtpSecure}
+                    onChange={(e) => setSmtpSecure(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  Use SSL/TLS (secure connection)
+                </label>
+                <button
+                  type="submit"
+                  disabled={senderIdentityLoading}
+                  className="px-4 py-2 bg-primary text-white rounded-lg font-medium text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {senderIdentityLoading ? "Verifying..." : "Connect & Verify Email"}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         {/* Relay Form Card */}
         <div className="bg-gradient-to-br from-primary/5 via-warning/5 to-card border border-primary/20 rounded-2xl p-6 shadow-lg shadow-primary/5">
