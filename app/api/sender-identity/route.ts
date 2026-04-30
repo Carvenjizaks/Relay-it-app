@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
     // Validate SMTP by attempting to create a transporter (we don't send, just verify auth)
     try {
-      const transporter = nodemailer.createTransporter({
+      const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: Number(smtpPort),
         secure: Boolean(smtpSecure),

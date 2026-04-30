@@ -22,7 +22,7 @@ declare module "nodemailer" {
     response: string
   }
 
-  export function createTransporter(options: {
+  export function createTransport(options: {
     host: string
     port: number
     secure: boolean
