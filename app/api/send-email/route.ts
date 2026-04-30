@@ -11,12 +11,18 @@ async function sendViaSmtpApi(
   replyTo?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const apiKey = emailConfig.apiKey
+  const channel = emailConfig.channel
 
   if (!apiKey) {
     return { success: false, error: "SMTP_API_KEY not configured" }
   }
 
+  if (!channel) {
+    return { success: false, error: "SMTP_CHANNEL not configured" }
+  }
+
   const payload: Record<string, unknown> = {
+    channel,
     recipients: {
       to: [{ address: { email: to, name: to.split("@")[0] } }],
     },

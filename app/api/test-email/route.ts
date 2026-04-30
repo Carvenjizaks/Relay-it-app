@@ -9,11 +9,16 @@ export async function POST(req: Request) {
     }
 
     const apiKey = emailConfig.apiKey
+    const channel = emailConfig.channel
     const fromEmail = emailConfig.senderEmail
     const fromName = emailConfig.senderName
 
     if (!apiKey) {
       return Response.json({ error: "SMTP_API_KEY is not set." }, { status: 500 })
+    }
+
+    if (!channel) {
+      return Response.json({ error: "SMTP_CHANNEL is not set." }, { status: 500 })
     }
 
     const html = `<!DOCTYPE html>
@@ -36,6 +41,7 @@ export async function POST(req: Request) {
 </html>`
 
     const payload = {
+      channel,
       recipients: {
         to: [{ address: { email, name } }],
       },
