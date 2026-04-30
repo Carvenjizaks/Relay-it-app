@@ -1,4 +1,4 @@
-import { smtpConfig } from "@/lib/smtp-config"
+import { emailConfig } from "@/lib/smtp-config"
 
 export async function POST(req: Request) {
   try {
@@ -8,12 +8,15 @@ export async function POST(req: Request) {
       return Response.json({ error: "Email and name are required" }, { status: 400 })
     }
 
-    const apiKey = smtpConfig.apiKey
-    const fromEmail = smtpConfig.senderEmail
-    const fromName = smtpConfig.senderName
+    const apiKey = emailConfig.apiKey
+    const inboxId = emailConfig.inboxId
 
     if (!apiKey) {
-      return Response.json({ error: "SMTP_API_KEY is not set." }, { status: 500 })
+      return Response.json({ error: "AGENTMAIL_API_KEY is not set." }, { status: 500 })
+    }
+
+    if (!inboxId) {
+      return Response.json({ error: "AGENTMAIL_INBOX_ID is not set." }, { status: 500 })
     }
 
     const html = `<!DOCTYPE html>
@@ -30,47 +33,39 @@ export async function POST(req: Request) {
     <p>Best regards,<br>The Relay-it Team</p>
   </div>
   <div style="text-align:center;margin-top:20px;color:#666;font-size:12px;">
-    <p>Sent via Relay-it</p>
+    <p>Sent via Relay-it using AgentMail</p>
   </div>
 </body>
 </html>`
 
     const payload = {
-      recipients: {
-        to: [{ address: { email, name } }],
-      },
-      originator: {
-        from: { address: { email: fromEmail, name: fromName } },
-      },
+      to: email,
       subject: "Test Email from Relay-it",
-      body: {
-        parts: [{ type: "text/html", content: html }],
-      },
+      html,
     }
 
-    console.log("[v0] Sending test email via SMTP.com API:", JSON.stringify({ to: email, from: fromEmail }))
+    console.log("[v0] Sending test email via AgentMail:", JSON.stringify({ inboxId, to: email }))
 
-    const response = await fetch("https://api.smtp.com/v4/messages", {
+    const response = await fetch(`https://api.agentmail.to/v0/inboxes/${inboxId}/messages/send`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify(payload),
     })
 
     const data = await response.json()
-    console.log("[v0] SMTP.com API response:", JSON.stringify(data))
+    console.log("[v0] AgentMail API response:", JSON.stringify(data))
 
     if (!response.ok) {
-      const errorDetail = JSON.stringify(data?.data || data)
       return Response.json({
-        error: `SMTP.com API error: ${errorDetail}`,
-        debug: { fromEmail, statusCode: response.status }
+        error: `AgentMail API error: ${JSON.stringify(data)}`,
+        debug: { inboxId, statusCode: response.status }
       }, { status: 500 })
     }
 
-    return Response.json({ success: true, messageId: data?.data?.message_id || "sent" })
+    return Response.json({ success: true, messageId: data?.message_id || "sent" })
   } catch (error) {
     console.error("[v0] Test email error:", error)
     return Response.json(

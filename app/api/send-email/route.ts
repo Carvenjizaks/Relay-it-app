@@ -1,45 +1,59 @@
 import { createClient } from "@/lib/supabase/server"
-import { smtpConfig } from "@/lib/smtp-config"
+import { emailConfig } from "@/lib/smtp-config"
 import { decrypt } from "@/lib/encryption"
 import nodemailer from "nodemailer"
 
-async function sendViaSmtpApi(
-  to: { email: string; name: string },
-  from: { email: string; name: string },
+async function sendViaAgentMail(
+  to: string,
   subject: string,
   html: string,
   replyTo?: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const apiKey = smtpConfig.apiKey
+  const apiKey = emailConfig.apiKey
+  const inboxId = emailConfig.inboxId
+
   if (!apiKey) {
-    return { success: false, error: "SMTP_API_KEY not configured" }
+    return { success: false, error: "AGENTMAIL_API_KEY not configured" }
+  }
+
+  if (!inboxId) {
+    return { success: false, error: "AGENTMAIL_INBOX_ID not configured" }
   }
 
   const payload: Record<string, unknown> = {
-    recipients: { to: [{ address: { email: to.email, name: to.name } }] },
-    originator: { from: { address: { email: from.email, name: from.name } } },
+    to,
     subject,
-    body: { parts: [{ type: "text/html", content: html }] },
+    html,
   }
 
-  if (replyTo && replyTo.includes("@")) {
-    ;(payload.originator as Record<string, unknown>).reply_to = [{ address: { email: replyTo } }]
+  if (replyTo) {
+    payload.reply_to = replyTo
   }
 
-  const response = await fetch("https://api.smtp.com/v4/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(payload),
-  })
+  console.log("[v0] Sending email via AgentMail:", JSON.stringify({ inboxId, to, subject: subject.substring(0, 50) }))
 
-  const data = await response.json()
-  if (!response.ok) {
-    return { success: false, error: JSON.stringify(data?.data || data) }
+  try {
+    const response = await fetch(`https://api.agentmail.to/v0/inboxes/${inboxId}/messages/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const data = await response.json()
+    console.log("[v0] AgentMail API response:", JSON.stringify(data))
+
+    if (!response.ok) {
+      return { success: false, error: JSON.stringify(data) }
+    }
+
+    return { success: true, messageId: data?.message_id || "sent" }
+  } catch (error) {
+    console.error("[v0] AgentMail API error:", error)
+    return { success: false, error: error instanceof Error ? error.message : String(error) }
   }
-  return { success: true, messageId: data?.data?.message_id || "sent" }
 }
 
 async function sendViaSenderSmtp(
@@ -58,7 +72,7 @@ async function sendViaSenderSmtp(
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   try {
     const password = decrypt(senderIdentity.smtp_password_encrypted)
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: senderIdentity.smtp_host,
       port: senderIdentity.smtp_port,
       secure: senderIdentity.smtp_secure,
@@ -138,8 +152,8 @@ export async function POST(req: Request) {
     // Determine sender display
     const fromName = senderIdentity
       ? `${senderName}`
-      : senderName || smtpConfig.senderName || "Relay-it"
-    const fromEmail = senderIdentity ? senderIdentity.email : smtpConfig.senderEmail
+      : senderName || emailConfig.senderName || "Relay-it"
+    const fromEmail = senderIdentity ? senderIdentity.email : emailConfig.senderEmail
 
     // Build personal-share style email HTML
     const relayMessage = campaign.relay_message || "Know someone who would love this? Share it with them!"
@@ -220,20 +234,18 @@ export async function POST(req: Request) {
       )
       // If sender SMTP fails, fall back to system
       if (!result.success) {
-        console.warn("[relay] Sender SMTP failed, falling back to system SMTP:", result.error)
-        result = await sendViaSmtpApi(
-          { email: recipientEmail, name: recipientName },
-          { email: smtpConfig.senderEmail, name: `${senderName} via Relay-it` },
+        console.warn("[relay] Sender SMTP failed, falling back to AgentMail:", result.error)
+        result = await sendViaAgentMail(
+          recipientEmail,
           finalSubject,
           fullHtml,
           senderEmail
         )
       }
     } else {
-      // System SMTP with transparent sender attribution
-      result = await sendViaSmtpApi(
-        { email: recipientEmail, name: recipientName },
-        { email: fromEmail, name: `${senderName} via Relay-it` },
+      // System email via AgentMail
+      result = await sendViaAgentMail(
+        recipientEmail,
         finalSubject,
         fullHtml,
         senderEmail
@@ -252,7 +264,7 @@ export async function POST(req: Request) {
         .eq("id", contactId)
     }
 
-    return Response.json({ success: true, messageId: result.messageId, sentVia: senderIdentity ? "sender_smtp" : "system_smtp" })
+    return Response.json({ success: true, messageId: result.messageId, sentVia: senderIdentity ? "sender_smtp" : "agentmail" })
   } catch (error) {
     console.error("[relay] Error sending email:", error)
     return Response.json(
