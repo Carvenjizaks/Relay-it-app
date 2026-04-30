@@ -1,7 +1,10 @@
-// SMTP.com configuration - uses env vars with sensible fallbacks
-export const smtpConfig = {
-  apiKey: process.env.SMTP_API_KEY || "",
-  senderEmail: process.env.SMTP_SENDER_EMAIL || "nexiumbi@gmail.com",
-  senderName: process.env.SMTP_SENDER_NAME || "Relay-it",
-  channel: process.env.SMTP_CHANNEL || "",
+// AgentMail configuration - uses env vars with sensible fallbacks
+export const emailConfig = {
+  apiKey: process.env.AGENTMAIL_API_KEY || "",
+  inboxId: process.env.AGENTMAIL_INBOX_ID || "carvenjiz",
+  senderEmail: process.env.AGENTMAIL_SENDER_EMAIL || "carvenjiz@agentmail.to",
+  senderName: process.env.AGENTMAIL_SENDER_NAME || "Relay-it",
 }
+
+// Keep backwards compatible export
+export const smtpConfig = emailConfig
