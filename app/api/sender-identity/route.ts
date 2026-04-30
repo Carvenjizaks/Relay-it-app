@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { encrypt } from "@/lib/encryption"
 import { NextResponse } from "next/server"
+import nodemailer from "nodemailer"
 
 export async function POST(req: Request) {
   try {
@@ -27,7 +28,6 @@ export async function POST(req: Request) {
 
     // Validate SMTP by attempting to create a transporter (we don't send, just verify auth)
     try {
-      const nodemailer = await import("nodemailer")
       const transporter = nodemailer.createTransporter({
         host: smtpHost,
         port: Number(smtpPort),
