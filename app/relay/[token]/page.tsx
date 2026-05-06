@@ -181,6 +181,21 @@ export default function RelayPage() {
         .update({ status: "sent" })
         .eq("id", newContact.id)
 
+      // Notify the campaign owner that a new relay was made — fire-and-forget
+      fetch("/api/notifications/new-relay", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          campaignId: relayData.campaign_id,
+          relayerName: relayData.sender_name,
+          relayerEmail: relayData.sender_email,
+          recipientName,
+          recipientEmail,
+        }),
+      }).catch(() => {
+        // Notification failure should never break the relay flow
+      })
+
       setSentCount(prev => prev + 1)
       setRecipientName("")
       setRecipientEmail("")
